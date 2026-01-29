@@ -1,0 +1,25 @@
+{
+    "name": "kitsch-bot",
+    "version": "1.0.0",
+    "description": "A high-end Discord utility bot for creating, scheduling, and managing customizable embedded messages",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node src/index.js",
+        "deploy": "node src/deploy-commands.js",
+        "dev": "node --watch src/index.js"
+    },
+    "keywords": [
+        "discord",
+        "bot",
+        "embed",
+        "scheduler"
+    ],
+    "author": "Kitsch",
+    "license": "MIT",
+    "dependencies": {
+        "sql.js": "^1.10.3",
+        "discord.js": "^14.14.1",
+        "dotenv": "^16.4.1",
+        "node-cron": "^3.0.3"
+    }
+}
