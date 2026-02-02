@@ -1,6 +1,6 @@
 # ✨ Kitsch Bot: The Ultimate Guide
 
-Welcome to the official guide for **Kitsch Bot**, a premium Discord embed builder and scheduler designed to make your server announcements stand out with high-end aesthetics and interactive features.
+Welcome to the official **Kitsch Bot**, your super-powered, versatile assistant designed to make life easier for moderators while delivering premium, high-end aesthetics for your server.
 
 ---
 
