@@ -59,6 +59,27 @@ module.exports = {
             subcommand
                 .setName('list')
                 .setDescription('List all embeds in this server')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('sticky')
+                .setDescription('Manage sticky embeds in this channel')
+                .addStringOption(option =>
+                    option
+                        .setName('action')
+                        .setDescription('Action to perform')
+                        .setRequired(true)
+                        .addChoices(
+                            { name: 'Set Sticky', value: 'set' },
+                            { name: 'Remove Sticky', value: 'remove' }
+                        )
+                )
+                .addStringOption(option =>
+                    option
+                        .setName('message_id')
+                        .setDescription('The message ID of the embed to make sticky (only for "set")')
+                        .setRequired(false)
+                )
         ),
 
     async execute(interaction) {
@@ -79,6 +100,9 @@ module.exports = {
                 break;
             case 'list':
                 await handleList(interaction);
+                break;
+            case 'sticky':
+                await handleSticky(interaction);
                 break;
         }
     },
@@ -260,6 +284,56 @@ async function handleList(interaction) {
         content: `📋 **Recent Embeds in ${interaction.guild.name}**\n\n${embedList}\n\nUse \`/embed edit <message_id>\` to edit an embed.`,
         ephemeral: true,
     });
+}
+
+/**
+ * Handle sticky embeds
+ */
+async function handleSticky(interaction) {
+    const action = interaction.options.getString('action');
+    const messageId = interaction.options.getString('message_id');
+
+    if (action === 'set') {
+        if (!messageId) {
+            return interaction.reply({
+                content: '❌ Please provide a message ID when setting a sticky embed.',
+                ephemeral: true,
+            });
+        }
+
+        const embedData = db.getEmbedByMessageId(messageId);
+        if (!embedData) {
+            return interaction.reply({
+                content: '❌ Embed not found. Make sure the message ID is correct.',
+                ephemeral: true,
+            });
+        }
+
+        if (embedData.guild_id !== interaction.guild.id) {
+            return interaction.reply({
+                content: '❌ This embed belongs to another server.',
+                ephemeral: true,
+            });
+        }
+
+        // Create the sticky record
+        db.createStickyEmbed(embedData.id, interaction.channel.id, interaction.guild.id);
+
+        await interaction.reply({
+            content: `✅ Sticky embed set! This announcement will now stay at the bottom of <#${interaction.channel.id}>.`,
+            ephemeral: true,
+        });
+
+        // Trigger the first reposition manually by sending a dummy message that will be handled by messageCreate
+        // Or better yet, just let the next message do it, or manually call the send logic.
+        // For better UX, we'll wait for the next message.
+    } else if (action === 'remove') {
+        db.removeStickyEmbed(interaction.channel.id);
+        await interaction.reply({
+            content: '✅ Sticky embed removed from this channel.',
+            ephemeral: true,
+        });
+    }
 }
 
 // Export session management for handlers

@@ -41,3 +41,24 @@ CREATE TABLE IF NOT EXISTS scheduled_jobs (
 CREATE INDEX IF NOT EXISTS idx_embeds_message_id ON embeds(message_id);
 CREATE INDEX IF NOT EXISTS idx_embeds_guild_id ON embeds(guild_id);
 CREATE INDEX IF NOT EXISTS idx_scheduled_jobs_status ON scheduled_jobs(status);
+
+-- Store active sticky embeds per channel
+CREATE TABLE IF NOT EXISTS sticky_embeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  embed_id INTEGER NOT NULL,
+  channel_id TEXT NOT NULL UNIQUE,
+  guild_id TEXT NOT NULL,
+  last_message_id TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (embed_id) REFERENCES embeds(id) ON DELETE CASCADE
+);
+
+-- Store FAQ entries
+CREATE TABLE IF NOT EXISTS faqs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);

@@ -326,4 +326,174 @@ module.exports = {
     getPendingJobs,
     updateJobStatus,
     cancelScheduledJob,
+    // Sticky embed operations
+    createStickyEmbed,
+    getStickyEmbedByChannel,
+    updateStickyMessageId,
+    removeStickyEmbed,
+    getAllStickyEmbeds,
+    // FAQ operations
+    addFAQ,
+    getFAQs,
+    getFAQById,
+    deleteFAQ,
+    getCategories,
+    getFAQsByCategory,
 };
+
+/**
+ * Add a new FAQ entry
+ */
+function addFAQ(guildId, category, question, answer) {
+    const stmt = db.prepare(`
+        INSERT INTO faqs (guild_id, category, question, answer)
+        VALUES (?, ?, ?, ?)
+    `);
+    stmt.run([guildId, category, question, answer]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get all FAQs for a guild
+ */
+function getFAQs(guildId) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM faqs WHERE guild_id = ? ORDER BY category, question');
+    stmt.bind([guildId]);
+
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Get a specific FAQ by ID
+ */
+function getFAQById(id) {
+    const stmt = db.prepare('SELECT * FROM faqs WHERE id = ?');
+    stmt.bind([id]);
+
+    let result = null;
+    if (stmt.step()) {
+        result = stmt.getAsObject();
+    }
+    stmt.free();
+    return result;
+}
+
+/**
+ * Delete an FAQ by ID
+ */
+function deleteFAQ(id) {
+    const stmt = db.prepare('DELETE FROM faqs WHERE id = ?');
+    stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get unique categories for a guild
+ */
+function getCategories(guildId) {
+    const results = [];
+    const stmt = db.prepare('SELECT DISTINCT category FROM faqs WHERE guild_id = ? ORDER BY category');
+    stmt.bind([guildId]);
+
+    while (stmt.step()) {
+        const row = stmt.getAsObject();
+        results.push(row.category);
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Get FAQs by category
+ */
+function getFAQsByCategory(guildId, category) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM faqs WHERE guild_id = ? AND category = ? ORDER BY question');
+    stmt.bind([guildId, category]);
+
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Create or update a sticky embed for a channel
+ */
+function createStickyEmbed(embedId, channelId, guildId) {
+    const stmt = db.prepare(`
+        INSERT OR REPLACE INTO sticky_embeds (embed_id, channel_id, guild_id)
+        VALUES (?, ?, ?)
+    `);
+    stmt.run([embedId, channelId, guildId]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get sticky embed info for a channel
+ */
+function getStickyEmbedByChannel(channelId) {
+    const stmt = db.prepare(`
+        SELECT se.*, e.config
+        FROM sticky_embeds se
+        JOIN embeds e ON se.embed_id = e.id
+        WHERE se.channel_id = ?
+    `);
+    stmt.bind([channelId]);
+
+    let result = null;
+    if (stmt.step()) {
+        const row = stmt.getAsObject();
+        row.config = JSON.parse(row.config);
+        result = row;
+    }
+    stmt.free();
+    return result;
+}
+
+/**
+ * Update the last message ID for a sticky embed
+ */
+function updateStickyMessageId(channelId, messageId) {
+    const stmt = db.prepare(`
+        UPDATE sticky_embeds 
+        SET last_message_id = ?
+        WHERE channel_id = ?
+    `);
+    stmt.run([messageId, channelId]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Remove sticky embed from a channel
+ */
+function removeStickyEmbed(channelId) {
+    const stmt = db.prepare('DELETE FROM sticky_embeds WHERE channel_id = ?');
+    stmt.run([channelId]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get all active sticky embeds across all servers
+ */
+function getAllStickyEmbeds() {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM sticky_embeds');
+
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}

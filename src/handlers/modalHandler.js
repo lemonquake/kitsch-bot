@@ -27,6 +27,8 @@ async function handleModalSubmit(interaction) {
         await handleButtonModal(interaction);
     } else if (customId.startsWith('forum_post_')) {
         await handleForumPostModal(interaction);
+    } else if (customId.startsWith('faq_add_')) {
+        await handleFAQAddModal(interaction);
     }
 }
 
@@ -351,9 +353,27 @@ async function showButtonsStep(interaction, sessionId) {
     });
 }
 
+/**
+ * Handle FAQ Add modal submission
+ */
+async function handleFAQAddModal(interaction) {
+    const parts = interaction.customId.split('_');
+    const category = parts[2];
+    const question = parts.slice(3).join('_');
+    const answer = interaction.fields.getTextInputValue('answer');
+
+    db.addFAQ(interaction.guild.id, category, question, answer);
+
+    await interaction.reply({
+        content: `✅ FAQ Added!\n\n**Category:** ${category}\n**Question:** ${question}`,
+        ephemeral: true,
+    });
+}
+
 module.exports = {
     handleModalSubmit,
     showColorStep,
     showImagesStep,
     showButtonsStep,
+    handleFAQAddModal,
 };

@@ -23,6 +23,9 @@ Kitsch Bot uses slash commands for all interactions. To see a quick overview of 
 
 The `/embed create` command takes you through a streamlined, multi-step process:
 
+> [!TIP]
+> **Live Preview**: Before finalizing, click the **Live Preview** button to see exactly how your embed will appear to users in an ephemeral message!
+
 ### Step 1: Content & Structure
 Choose a channel and whether to "Post Now" or "Schedule for Later". A modal will appear where you can enter:
 - **Title**: The bold heading of your embed.
@@ -57,7 +60,37 @@ The bot will handle the rest and post it exactly at that time!
 
 ---
 
-## 📝 Formatting & Best Practices
+## 📌 Sticky Embeds
+
+Keep your most important announcements at the bottom of the channel, even as chat continues!
+
+### How to use:
+1.  Create an embed or find an existing one's **Message ID**.
+2.  Use `/embed sticky action:Set Sticky message_id:YOUR_ID` in the target channel.
+3.  The bot will automatically reposition the embed whenever new messages are sent.
+
+### Management:
+- To stop stickiness, run `/embed sticky action:Remove Sticky` in the channel.
+
+---
+
+## � FAQ / Knowledge Base
+
+Create an interactive, multi-category knowledge base for your members.
+
+### Setup:
+1.  **Add FAQs**: Use `/faq add category:Question question:Question` and enter the answer in the modal.
+2.  **Deploy**: Use `/faq deploy` to post the interactive menu in any channel.
+3.  **Manage**: Use `/faq list` to see all entry IDs and `/faq delete id:ID` to remove them.
+
+### Features:
+- **Interactive Browsing**: Users select a category, then a question to see the answer.
+- **Easy Navigation**: "Back" buttons make it simple to browse multiple topics.
+- **Clean Aesthetic**: Stylized embeds that match your server's high-end look.
+
+---
+
+## �📝 Formatting & Best Practices
 
 - **Bold**: `**text**`
 - **Italics**: `*text*`

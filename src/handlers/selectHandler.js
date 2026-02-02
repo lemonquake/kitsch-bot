@@ -1,5 +1,7 @@
 const { buildSessions } = require('../commands/embed');
 const { showButtonsStep } = require('./modalHandler');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const db = require('../database/db');
 
 /**
  * Handle select menu interactions
@@ -12,6 +14,10 @@ async function handleSelectMenu(interaction) {
         await handleColorSelect(interaction);
     } else if (customId.startsWith('embed_button_style_')) {
         await handleButtonStyleSelect(interaction);
+    } else if (customId === 'faq_category_select') {
+        await handleFAQCategorySelect(interaction);
+    } else if (customId === 'faq_question_select') {
+        await handleFAQQuestionSelect(interaction);
     }
 }
 
@@ -58,6 +64,75 @@ async function handleButtonStyleSelect(interaction) {
     await interaction.update({
         content: `Selected style: **${selectedStyle}**`,
         components: [],
+    });
+}
+
+/**
+ * Handle FAQ category selection
+ */
+async function handleFAQCategorySelect(interaction) {
+    const category = interaction.values[0];
+    const faqs = db.getFAQsByCategory(interaction.guild.id, category);
+
+    const embed = new EmbedBuilder()
+        .setTitle(`✨ Knowledge Base: ${category}`)
+        .setDescription('Select a question below to see the answer.')
+        .setColor('#FF69B4');
+
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('faq_question_select')
+        .setPlaceholder('Select a question...')
+        .addOptions(faqs.map(f => ({
+            label: f.question.length > 100 ? f.question.substring(0, 97) + '...' : f.question,
+            value: f.id.toString(),
+        })));
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const backRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('faq_back_to_categories')
+            .setLabel('Back to Categories')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('⬅️')
+    );
+
+    await interaction.update({
+        embeds: [embed],
+        components: [row, backRow]
+    });
+}
+
+/**
+ * Handle FAQ question selection
+ */
+async function handleFAQQuestionSelect(interaction) {
+    const faqId = parseInt(interaction.values[0]);
+    const faq = db.getFAQById(faqId);
+
+    if (!faq) return interaction.update({ content: '❌ FAQ no longer exists.', components: [] });
+
+    const embed = new EmbedBuilder()
+        .setTitle(`❓ ${faq.question}`)
+        .setDescription(faq.answer)
+        .setColor('#FF69B4')
+        .setFooter({ text: `Category: ${faq.category}` });
+
+    const backRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`faq_back_to_questions_${faq.category}`)
+            .setLabel('Back to Questions')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('⬅️'),
+        new ButtonBuilder()
+            .setCustomId('faq_back_to_categories')
+            .setLabel('Back to Categories')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    await interaction.update({
+        embeds: [embed],
+        components: [backRow]
     });
 }
 

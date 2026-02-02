@@ -37,9 +37,15 @@ async function handleButton(interaction) {
         await handleSchedule(interaction);
     } else if (customId.startsWith('embed_cancel_')) {
         await handleCancel(interaction);
+    } else if (customId.startsWith('embed_live_preview_')) {
+        await handleLivePreview(interaction);
     } else if (customId.startsWith('kitsch_btn_')) {
         // Custom button clicks on posted embeds
         await handleCustomButton(interaction);
+    } else if (customId === 'faq_back_to_categories') {
+        await handleFAQBackToCategories(interaction);
+    } else if (customId.startsWith('faq_back_to_questions_')) {
+        await handleFAQBackToQuestions(interaction);
     }
 }
 
@@ -158,6 +164,11 @@ async function handleFinish(interaction) {
             .setLabel('Schedule')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('📅'),
+        new ButtonBuilder()
+            .setCustomId(`embed_live_preview_${sessionId}`)
+            .setLabel('Live Preview')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('👁️'),
         new ButtonBuilder()
             .setCustomId(`embed_cancel_${sessionId}`)
             .setLabel('Cancel')
@@ -340,6 +351,97 @@ async function handleCustomButton(interaction) {
     await interaction.reply({
         content: '✨ Button clicked!',
         ephemeral: true,
+    });
+}
+
+/**
+ * Handle live preview button
+ */
+async function handleLivePreview(interaction) {
+    const sessionId = interaction.customId.split('_').pop();
+    const session = buildSessions.get(sessionId);
+
+    if (!session) {
+        return interaction.reply({
+            content: '❌ Session expired. Please start again.',
+            ephemeral: true,
+        });
+    }
+
+    const previewEmbed = buildEmbed(session.config);
+    const buttonComponents = buildButtons(session.buttons);
+
+    await interaction.reply({
+        content: '👁️ **Live Preview**\nThis is exactly how your embed will appear to everyone:',
+        embeds: [previewEmbed],
+        components: buttonComponents,
+        ephemeral: true,
+    });
+}
+
+/**
+ * Handle FAQ back to categories button
+ */
+async function handleFAQBackToCategories(interaction) {
+    const { EmbedBuilder, StringSelectMenuBuilder } = require('discord.js');
+    const categories = db.getCategories(interaction.guild.id);
+
+    const embed = new EmbedBuilder()
+        .setTitle('✨ Knowledge Base')
+        .setDescription('Select a category below to browse our Frequently Asked Questions.')
+        .setColor('#FF69B4')
+        .setThumbnail(interaction.guild.iconURL());
+
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('faq_category_select')
+        .setPlaceholder('Select a category...')
+        .addOptions(categories.map(cat => ({
+            label: cat,
+            value: cat,
+        })));
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    await interaction.update({
+        embeds: [embed],
+        components: [row]
+    });
+}
+
+/**
+ * Handle FAQ back to questions button
+ */
+async function handleFAQBackToQuestions(interaction) {
+    const { EmbedBuilder, StringSelectMenuBuilder } = require('discord.js');
+    const category = interaction.customId.replace('faq_back_to_questions_', '');
+    const faqs = db.getFAQsByCategory(interaction.guild.id, category);
+
+    const embed = new EmbedBuilder()
+        .setTitle(`✨ Knowledge Base: ${category}`)
+        .setDescription('Select a question below to see the answer.')
+        .setColor('#FF69B4');
+
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('faq_question_select')
+        .setPlaceholder('Select a question...')
+        .addOptions(faqs.map(f => ({
+            label: f.question.length > 100 ? f.question.substring(0, 97) + '...' : f.question,
+            value: f.id.toString(),
+        })));
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const backRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('faq_back_to_categories')
+            .setLabel('Back to Categories')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('⬅️')
+    );
+
+    await interaction.update({
+        embeds: [embed],
+        components: [row, backRow]
     });
 }
 
