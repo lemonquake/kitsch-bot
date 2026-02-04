@@ -37,11 +37,17 @@ module.exports = {
                     option
                         .setName('schedule')
                         .setDescription('When to post the embed')
-                        .setRequired(false)
                         .addChoices(
                             { name: 'Post Now', value: 'now' },
                             { name: 'Schedule for Later', value: 'schedule' }
                         )
+                )
+                .addStringOption(option =>
+                    option
+                        .setName('template')
+                        .setDescription('Start from a saved template')
+                        .setRequired(false)
+                        .setAutocomplete(true)
                 )
         )
         .addSubcommand(subcommand =>
@@ -106,6 +112,23 @@ module.exports = {
                 break;
         }
     },
+
+    async autocomplete(interaction) {
+        const focusedOption = interaction.options.getFocused(true);
+
+        if (focusedOption.name === 'template') {
+            const focusedValue = focusedOption.value;
+            const templates = db.getTemplates(interaction.guild.id);
+
+            const filtered = templates.filter(t =>
+                t.name.toLowerCase().includes(focusedValue.toLowerCase())
+            );
+
+            await interaction.respond(
+                filtered.slice(0, 25).map(t => ({ name: t.name, value: t.name }))
+            );
+        }
+    },
 };
 
 /**
@@ -114,6 +137,33 @@ module.exports = {
 async function handleCreate(interaction) {
     const channel = interaction.options.getChannel('channel');
     const scheduleOption = interaction.options.getString('schedule') || 'now';
+    const templateName = interaction.options.getString('template');
+
+    let initialConfig = {};
+    let initialButtons = [];
+
+    // Load template if selected
+    if (templateName) {
+        const template = db.getTemplateByName(interaction.guild.id, templateName);
+        if (template) {
+            initialConfig = template.config;
+            const buttons = db.getTemplateButtons(template.id);
+            // Map buttons to match session format
+            initialButtons = buttons.map(b => ({
+                label: b.label,
+                style: b.style,
+                url: b.url,
+                customId: b.custom_id,
+                rowIndex: b.row_index,
+                position: b.position
+            }));
+        } else {
+            return interaction.reply({
+                content: `❌ Template **${templateName}** not found.`,
+                ephemeral: true,
+            });
+        }
+    }
 
     // Initialize session
     const sessionId = interaction.user.id;
@@ -121,10 +171,16 @@ async function handleCreate(interaction) {
         channelId: channel.id,
         guildId: interaction.guild.id,
         scheduleOption: scheduleOption,
-        config: {},
-        buttons: [],
+        config: initialConfig,
+        buttons: initialButtons,
         step: 'content',
     });
+
+    // Validates config values for initial population
+    const titleValue = initialConfig.title || '';
+    const descriptionValue = initialConfig.description || '';
+    const authorValue = initialConfig.author || '';
+    const footerValue = initialConfig.footer || '';
 
     // Show content modal
     const modal = new ModalBuilder()
@@ -137,7 +193,8 @@ async function handleCreate(interaction) {
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('Enter embed title...')
         .setMaxLength(256)
-        .setRequired(false);
+        .setRequired(false)
+        .setValue(titleValue);
 
     const descriptionInput = new TextInputBuilder()
         .setCustomId('description')
@@ -145,7 +202,8 @@ async function handleCreate(interaction) {
         .setStyle(TextInputStyle.Paragraph)
         .setPlaceholder('Enter embed description... (supports markdown)')
         .setMaxLength(4000)
-        .setRequired(false);
+        .setRequired(false)
+        .setValue(descriptionValue);
 
     const authorInput = new TextInputBuilder()
         .setCustomId('author')
@@ -153,7 +211,8 @@ async function handleCreate(interaction) {
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('Enter author name...')
         .setMaxLength(256)
-        .setRequired(false);
+        .setRequired(false)
+        .setValue(authorValue);
 
     const footerInput = new TextInputBuilder()
         .setCustomId('footer')
@@ -161,7 +220,8 @@ async function handleCreate(interaction) {
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('Enter footer text...')
         .setMaxLength(2048)
-        .setRequired(false);
+        .setRequired(false)
+        .setValue(footerValue);
 
     modal.addComponents(
         new ActionRowBuilder().addComponents(titleInput),

@@ -147,5 +147,23 @@ Here are some ready-to-use templates for your server:
 
 ---
 
+## 📑 Template System
+
+Save your favorite embed designs to reuse them instantly!
+
+### Commands:
+| Command | Description |
+| :--- | :--- |
+| `/template save` | Save a new template. You'll be asked for a name and category. |
+| `/template list` | View all saved templates organized by category. |
+| `/template use` | Post a template to a channel immediately. |
+| `/template delete` | Delete a template you no longer need. |
+| `/template preview` | Preview a template privately before using it. |
+
+### Using Templates:
+When creating a new embed with `/embed create`, you can select the `template` option to start with a pre-filled configuration!
+
+---
+
 > [!NOTE]
 > Need more help? Feel free to reach out to the staff or check the developer docs!

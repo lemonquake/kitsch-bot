@@ -305,6 +305,131 @@ function cancelScheduledJob(embedId) {
     saveDatabase();
 }
 
+// ============================================
+// Template CRUD Operations
+// ============================================
+
+/**
+ * Create a new embed template
+ */
+function createTemplate(guildId, name, category, config, createdBy) {
+    const stmt = db.prepare(`
+        INSERT INTO embed_templates (guild_id, name, category, config, created_by)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run([guildId, name, category, JSON.stringify(config), createdBy]);
+    stmt.free();
+
+    const result = db.exec('SELECT last_insert_rowid() as id');
+    const templateId = result[0].values[0][0];
+
+    saveDatabase();
+    return templateId;
+}
+
+/**
+ * Create buttons for a template
+ */
+function createTemplateButtons(templateId, buttons) {
+    const stmt = db.prepare(`
+        INSERT INTO template_buttons (template_id, label, style, url, row_index, position)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const btn of buttons) {
+        stmt.run([
+            templateId,
+            btn.label,
+            btn.style,
+            btn.url || null,
+            btn.rowIndex || 0,
+            btn.position || 0
+        ]);
+    }
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get all templates for a guild
+ */
+function getTemplates(guildId) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM embed_templates WHERE guild_id = ? ORDER BY category, name');
+    stmt.bind([guildId]);
+
+    while (stmt.step()) {
+        const row = stmt.getAsObject();
+        row.config = JSON.parse(row.config);
+        results.push(row);
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Get template by name and guild
+ */
+function getTemplateByName(guildId, name) {
+    const stmt = db.prepare('SELECT * FROM embed_templates WHERE guild_id = ? AND lower(name) = lower(?)');
+    stmt.bind([guildId, name]);
+
+    let result = null;
+    if (stmt.step()) {
+        const row = stmt.getAsObject();
+        row.config = JSON.parse(row.config);
+        result = row;
+    }
+    stmt.free();
+    return result;
+}
+
+/**
+ * Get template by ID
+ */
+function getTemplateById(id) {
+    const stmt = db.prepare('SELECT * FROM embed_templates WHERE id = ?');
+    stmt.bind([id]);
+
+    let result = null;
+    if (stmt.step()) {
+        const row = stmt.getAsObject();
+        row.config = JSON.parse(row.config);
+        result = row;
+    }
+    stmt.free();
+    return result;
+}
+
+/**
+ * Get buttons for a template
+ */
+function getTemplateButtons(templateId) {
+    const results = [];
+    const stmt = db.prepare(`
+        SELECT * FROM template_buttons 
+        WHERE template_id = ?
+        ORDER BY row_index, position
+    `);
+    stmt.bind([templateId]);
+
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Delete a template
+ */
+function deleteTemplate(id) {
+    const stmt = db.prepare('DELETE FROM embed_templates WHERE id = ?');
+    stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
+
 module.exports = {
     initDatabase,
     getDb,
@@ -339,6 +464,14 @@ module.exports = {
     deleteFAQ,
     getCategories,
     getFAQsByCategory,
+    // Template operations
+    createTemplate,
+    createTemplateButtons,
+    getTemplates,
+    getTemplateByName,
+    getTemplateById,
+    getTemplateButtons,
+    deleteTemplate,
 };
 
 /**

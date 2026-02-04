@@ -29,12 +29,53 @@ async function handleModalSubmit(interaction) {
         await handleForumPostModal(interaction);
     } else if (customId.startsWith('faq_add_')) {
         await handleFAQAddModal(interaction);
+    } else if (customId.startsWith('template_save_')) {
+        await handleTemplateSaveModal(interaction);
     }
 }
 
 /**
- * Handle forum post modal submission
+ * Handle template save modal submission
  */
+async function handleTemplateSaveModal(interaction) {
+    const parts = interaction.customId.split('_');
+    const name = parts[2];
+    const category = parts[3];
+
+    // Extract values
+    const title = interaction.fields.getTextInputValue('title');
+    const description = interaction.fields.getTextInputValue('description');
+    const color = interaction.fields.getTextInputValue('color');
+
+    const config = {
+        title: title || undefined,
+        description: description || undefined,
+        color: color || '#FFFFFF',
+    };
+
+    // Create template in database
+    db.createTemplate(
+        interaction.guild.id,
+        name,
+        category,
+        config,
+        interaction.user.id
+    );
+
+    await interaction.reply({
+        content: `✅ Template **${name}** saved in category **${category}**!`,
+        ephemeral: true,
+    });
+}
+
+module.exports = {
+    handleModalSubmit,
+    showColorStep,
+    showImagesStep,
+    showButtonsStep,
+    handleFAQAddModal,
+    handleTemplateSaveModal,
+};
 async function handleForumPostModal(interaction) {
     const { FORUM_CHANNEL_ID } = require('../commands/forum');
 

@@ -28,6 +28,11 @@ module.exports = {
                     inline: false,
                 },
                 {
+                    name: '📑 Templates',
+                    value: '`/template save` - Save your own reusable templates\n`/template use` - Post a saved template\n`/template list` - Manage your templates',
+                    inline: false,
+                },
+                {
                     name: '🔐 Required Roles',
                     value: config.allowedRoles.map(r => `• ${r}`).join('\n'),
                     inline: true,

@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitsch Bot - Beginner's Tutorial</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --kitsch-pink: #FF69B4;
+            --kitsch-light: #FFB6C1;
+            --discord-blurple: #5865F2;
+            --dark-bg: #1a1a2e;
+            --card-bg: #2d2d44;
+            --text-light: #ffffff;
+            --text-muted: #a0a0b0;
+            --success: #57F287;
+            --warning: #FEE75C;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            color: var(--text-light);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, var(--kitsch-pink) 0%, var(--discord-blurple) 100%);
+            border-radius: 20px;
+            margin-bottom: 50px;
+            box-shadow: 0 20px 60px rgba(255, 105, 180, 0.3);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Table of Contents */
+        .toc {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 50px;
+            border-left: 4px solid var(--kitsch-pink);
+        }
+
+        .toc h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--kitsch-pink);
+        }
+
+        .toc ol {
+            list-style-position: inside;
+            counter-reset: toc-counter;
+        }
+
+        .toc li {
+            counter-increment: toc-counter;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 1.1rem;
+        }
+
+        .toc li:last-child {
+            border-bottom: none;
+        }
+
+        /* Sections */
+        .section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: var(--kitsch-pink);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: 700;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+
+        .section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section h3 {
+            font-size: 1.3rem;
+            margin: 25px 0 15px 0;
+            color: var(--kitsch-light);
+            border-bottom: 2px solid var(--kitsch-pink);
+            padding-bottom: 8px;
+        }
+
+        .section h4 {
+            font-size: 1.1rem;
+            margin: 20px 0 10px 0;
+            color: var(--discord-blurple);
+        }
+
+        .section p {
+            margin-bottom: 15px;
+            color: var(--text-muted);
+        }
+
+        /* Command boxes */
+        .command-box {
+            background: #1e1e32;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid var(--discord-blurple);
+        }
+
+        .command-box code {
+            background: var(--discord-blurple);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .command-box .description {
+            margin-top: 10px;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        /* Step boxes */
+        .step {
+            background: linear-gradient(135deg, #252540 0%, #1e1e32 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            position: relative;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+        }
+
+        .step-number {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: var(--kitsch-pink);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .step h4 {
+            margin-top: 10px;
+            color: var(--text-light);
+        }
+
+        .step p {
+            margin-top: 10px;
+        }
+
+        /* Tips and Notes */
+        .tip {
+            background: linear-gradient(135deg, rgba(87, 242, 135, 0.1) 0%, rgba(87, 242, 135, 0.05) 100%);
+            border-left: 4px solid var(--success);
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+        }
+
+        .tip::before {
+            content: "💡 TIP";
+            display: block;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 8px;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, rgba(254, 231, 92, 0.1) 0%, rgba(254, 231, 92, 0.05) 100%);
+            border-left: 4px solid var(--warning);
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+        }
+
+        .warning::before {
+            content: "⚠️ IMPORTANT";
+            display: block;
+            font-weight: 700;
+            color: var(--warning);
+            margin-bottom: 8px;
+        }
+
+        .note {
+            background: linear-gradient(135deg, rgba(88, 101, 242, 0.1) 0%, rgba(88, 101, 242, 0.05) 100%);
+            border-left: 4px solid var(--discord-blurple);
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+        }
+
+        .note::before {
+            content: "📝 NOTE";
+            display: block;
+            font-weight: 700;
+            color: var(--discord-blurple);
+            margin-bottom: 8px;
+        }
+
+        /* Lists */
+        ul,
+        ol {
+            margin: 15px 0 15px 25px;
+        }
+
+        li {
+            margin: 8px 0;
+            color: var(--text-muted);
+        }
+
+        li strong {
+            color: var(--text-light);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #1e1e32;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        th {
+            background: var(--kitsch-pink);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        td code {
+            background: var(--discord-blurple);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Visual Flow */
+        .flow-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .flow-item {
+            background: linear-gradient(135deg, var(--kitsch-pink) 0%, var(--discord-blurple) 100%);
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            min-width: 140px;
+        }
+
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            color: var(--kitsch-pink);
+        }
+
+        /* Example Cards */
+        .example-card {
+            background: #1e1e32;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 25px 0;
+        }
+
+        .example-header {
+            background: linear-gradient(135deg, var(--kitsch-pink) 0%, #e91e8c 100%);
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+
+        .example-content {
+            padding: 20px;
+        }
+
+        .example-content .field {
+            margin: 10px 0;
+        }
+
+        .example-content .field-name {
+            color: var(--kitsch-light);
+            font-weight: 500;
+        }
+
+        /* Color swatches */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .color-swatch {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px;
+            margin-top: 50px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer p {
+            color: var(--text-muted);
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                color: #333;
+            }
+
+            .section,
+            .toc,
+            .header {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+
+            .header {
+                background: var(--kitsch-pink) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        /* Inline code */
+        code {
+            background: rgba(88, 101, 242, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>✨ Kitsch Bot</h1>
+            <p>The Complete Beginner's Guide to Creating Beautiful Embeds and Managing Your Server</p>
+        </div>
+
+        <!-- Table of Contents -->
+        <div class="toc">
+            <h2>📋 What You'll Learn</h2>
+            <ol>
+                <li>Getting Started with Kitsch Bot</li>
+                <li>Understanding Discord Embeds</li>
+                <li>Creating Your First Embed (Step-by-Step)</li>
+                <li>Adding Colors, Images & Buttons</li>
+                <li>Scheduling Posts for Later</li>
+                <li>Editing Existing Embeds</li>
+                <li>Making Embeds "Sticky"</li>
+                <li>Using the FAQ / Knowledge Base</li>
+                <li>Posting to Forums</li>
+                <li>Troubleshooting Common Issues</li>
+                <li>Quick Reference Cheat Sheet</li>
+            </ol>
+        </div>
+
+        <!-- Section 1: Getting Started -->
+        <div class="section">
+            <h2><span class="section-number">1</span> Getting Started with Kitsch Bot</h2>
+
+            <p>Welcome to Kitsch Bot! This tutorial will teach you everything you need to know to create stunning
+                announcement embeds, schedule posts, and manage your server like a pro.</p>
+
+            <h3>What is Kitsch Bot?</h3>
+            <p>Kitsch Bot is a premium Discord bot that helps moderators create beautiful, customizable announcement
+                embeds. Unlike regular Discord messages, embeds can have:</p>
+            <ul>
+                <li><strong>Custom colors</strong> – Make your posts stand out</li>
+                <li><strong>Images & thumbnails</strong> – Add visual appeal</li>
+                <li><strong>Interactive buttons</strong> – Link to websites or trigger actions</li>
+                <li><strong>Scheduled posting</strong> – Set it and forget it</li>
+                <li><strong>Sticky functionality</strong> – Keep important posts visible</li>
+            </ul>
+
+            <h3>Required Roles</h3>
+            <p>To use Kitsch Bot commands, you need one of these roles:</p>
+            <ul>
+                <li><strong>Admin</strong></li>
+                <li><strong>Event Organizer</strong></li>
+                <li><strong>Mod</strong></li>
+            </ul>
+
+            <div class="tip">
+                Don't have the right role? Contact your server administrator to get access!
+            </div>
+
+            <h3>Your First Commands</h3>
+            <p>Kitsch Bot uses <strong>slash commands</strong>. Just type <code>/</code> in any channel and you'll see
+                available commands.</p>
+
+            <div class="command-box">
+                <code>/help</code>
+                <div class="description">Shows a quick overview of all Kitsch Bot features.</div>
+            </div>
+
+            <div class="command-box">
+                <code>/guide</code>
+                <div class="description">Displays the full bot guide directly in Discord.</div>
+            </div>
+        </div>
+
+        <!-- Section 2: Understanding Embeds -->
+        <div class="section">
+            <h2><span class="section-number">2</span> Understanding Discord Embeds</h2>
+
+            <p>Before we dive in, let's understand what makes up an embed:</p>
+
+            <h3>Anatomy of an Embed</h3>
+            <table>
+                <tr>
+                    <th>Component</th>
+                    <th>Description</th>
+                    <th>Required?</th>
+                </tr>
+                <tr>
+                    <td><strong>Title</strong></td>
+                    <td>The bold heading at the top of your embed</td>
+                    <td>Recommended</td>
+                </tr>
+                <tr>
+                    <td><strong>Description</strong></td>
+                    <td>The main body text (supports Markdown formatting)</td>
+                    <td>Recommended</td>
+                </tr>
+                <tr>
+                    <td><strong>Color</strong></td>
+                    <td>The colored stripe on the left side</td>
+                    <td>Optional (default: White)</td>
+                </tr>
+                <tr>
+                    <td><strong>Author</strong></td>
+                    <td>Small text above the title</td>
+                    <td>Optional</td>
+                </tr>
+                <tr>
+                    <td><strong>Footer</strong></td>
+                    <td>Small text at the very bottom</td>
+                    <td>Optional</td>
+                </tr>
+                <tr>
+                    <td><strong>Thumbnail</strong></td>
+                    <td>Small image in the top-right corner</td>
+                    <td>Optional</td>
+                </tr>
+                <tr>
+                    <td><strong>Banner Image</strong></td>
+                    <td>Large image at the bottom</td>
+                    <td>Optional</td>
+                </tr>
+                <tr>
+                    <td><strong>Buttons</strong></td>
+                    <td>Clickable buttons below the embed</td>
+                    <td>Optional</td>
+                </tr>
+            </table>
+
+            <div class="note">
+                You don't need to fill in every field! Start simple with just a title and description, then add more as
+                you get comfortable.
+            </div>
+        </div>
+
+        <!-- Section 3: Creating Your First Embed -->
+        <div class="section">
+            <h2><span class="section-number">3</span> Creating Your First Embed (Step-by-Step)</h2>
+
+            <p>Let's create your first embed together! Follow these steps exactly:</p>
+
+            <div class="step">
+                <span class="step-number">Step 1</span>
+                <h4>Start the Embed Builder</h4>
+                <p>Type the following command in any channel:</p>
+                <div class="command-box">
+                    <code>/embed create</code>
+                </div>
+                <p>The bot will respond with an interactive builder interface!</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">Step 2</span>
+                <h4>Select a Channel</h4>
+                <p>You'll see a <strong>dropdown menu</strong> asking where to post. Click it and select the channel
+                    where you want your embed to appear.</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">Step 3</span>
+                <h4>Choose "Post Now" or "Schedule"</h4>
+                <p>Two buttons will appear:</p>
+                <ul>
+                    <li><strong>📝 Post Now</strong> – Posts immediately after you finish</li>
+                    <li><strong>📅 Schedule</strong> – Posts at a specific date/time you choose later</li>
+                </ul>
+                <p>For your first embed, click <strong>"Post Now"</strong>.</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">Step 4</span>
+                <h4>Fill in the Content Modal</h4>
+                <p>A popup (called a "modal") will appear with these fields:</p>
+                <ul>
+                    <li><strong>Title:</strong> Enter your headline (e.g., "Welcome to Our Server!")</li>
+                    <li><strong>Description:</strong> Enter your main message (you can use Markdown here!)</li>
+                    <li><strong>Author:</strong> Optional – adds small text above the title</li>
+                    <li><strong>Footer:</strong> Optional – adds small text at the bottom</li>
+                </ul>
+                <p>Click <strong>Submit</strong> when done.</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">Step 5</span>
+                <h4>Choose a Color</h4>
+                <p>A color selection dropdown will appear. Choose from:</p>
+                <div class="color-grid">
+                    <div class="color-swatch" style="background: #FFFFFF; color: #333;">White (Default)</div>
+                    <div class="color-swatch" style="background: #FF69B4;">Kitsch Pink ✨</div>
+                    <div class="color-swatch" style="background: #5865F2;">Discord Blurple</div>
+                    <div class="color-swatch" style="background: #57F287;">Success Green</div>
+                    <div class="color-swatch" style="background: #FEE75C; color: #333;">Warning Yellow</div>
+                    <div class="color-swatch" style="background: #ED4245;">Danger Red</div>
+                </div>
+                <p>Or click <strong>"Skip Color"</strong> to use the default white.</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">Step 6</span>
+                <h4>Add Images (Optional)</h4>
+                <p>You'll be asked if you want to add images:</p>
+                <ul>
+                    <li>Click <strong>"Add Images"</strong> to add a thumbnail or banner</li>
+                    <li>Click <strong>"Skip Images"</strong> to continue without</li>
+                </ul>
+            </div>
+
+            <div class="step">
+                <span class="step-number">Step 7</span>
+                <h4>Add Buttons (Optional)</h4>
+                <p>You can add up to 25 buttons! Each button needs:</p>
+                <ul>
+                    <li><strong>Label:</strong> The text on the button (e.g., "Learn More")</li>
+                    <li><strong>URL:</strong> The website link it opens (e.g., "<code>https://google.com</code>")</li>
+                </ul>
+                <p>Click <strong>"Finish Buttons"</strong> when you're done adding buttons, or <strong>"Skip"</strong>
+                    if you don't want any.</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">Step 8</span>
+                <h4>Preview & Post</h4>
+                <p>You'll see final options:</p>
+                <ul>
+                    <li><strong>👁️ Live Preview</strong> – See exactly how your embed will look (private to you)</li>
+                    <li><strong>📤 Post Now</strong> – Publish your embed to the channel</li>
+                    <li><strong>❌ Cancel</strong> – Discard and start over</li>
+                </ul>
+            </div>
+
+            <div class="tip">
+                <strong>Always use Live Preview!</strong> It shows you exactly what your embed will look like before
+                posting. This helps catch any formatting issues.
+            </div>
+
+            <h3>The Complete Flow</h3>
+            <div class="flow-diagram">
+                <div class="flow-item">/embed create</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Select Channel</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Enter Content</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Choose Color</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Add Images</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Add Buttons</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Post!</div>
+            </div>
+        </div>
+
+        <!-- Section 4: Colors, Images & Buttons -->
+        <div class="section">
+            <h2><span class="section-number">4</span> Adding Colors, Images & Buttons</h2>
+
+            <h3>🎨 Colors</h3>
+            <p>Colors add personality to your embeds. Here are the available options:</p>
+
+            <table>
+                <tr>
+                    <th>Color Name</th>
+                    <th>Best For</th>
+                </tr>
+                <tr>
+                    <td><strong>White</strong> (Default)</td>
+                    <td>Clean, professional announcements</td>
+                </tr>
+                <tr>
+                    <td><strong>Kitsch Pink</strong></td>
+                    <td>Fun, premium-looking posts ✨</td>
+                </tr>
+                <tr>
+                    <td><strong>Discord Blurple</strong></td>
+                    <td>Official-looking Discord messages</td>
+                </tr>
+                <tr>
+                    <td><strong>Success Green</strong></td>
+                    <td>Good news, achievements, confirmations</td>
+                </tr>
+                <tr>
+                    <td><strong>Warning Yellow</strong></td>
+                    <td>Important notices, reminders</td>
+                </tr>
+                <tr>
+                    <td><strong>Danger Red</strong></td>
+                    <td>Urgent warnings, rule violations</td>
+                </tr>
+            </table>
+
+            <h3>🖼️ Images</h3>
+            <p>You can add two types of images:</p>
+
+            <h4>Thumbnail</h4>
+            <ul>
+                <li>Small image in the <strong>top-right corner</strong></li>
+                <li>Great for: logos, icons, small graphics</li>
+                <li>Recommended size: 80x80 to 400x400 pixels</li>
+            </ul>
+
+            <h4>Banner Image</h4>
+            <ul>
+                <li>Large image at the <strong>bottom</strong> of the embed</li>
+                <li>Great for: event banners, promotional graphics</li>
+                <li>Recommended size: 1200x630 pixels (like social media images)</li>
+            </ul>
+
+            <div class="warning">
+                <strong>Image URLs must be direct links!</strong> They should end in <code>.png</code>,
+                <code>.jpg</code>, <code>.gif</code>, or <code>.webp</code>. Links from Google search results usually
+                won't work.
+            </div>
+
+            <div class="tip">
+                <strong>Where to get image URLs:</strong>
+                <ul>
+                    <li>Upload an image to Discord, right-click it, and select "Copy Link"</li>
+                    <li>Use image hosting sites like Imgur</li>
+                    <li>Use your server's uploaded images</li>
+                </ul>
+            </div>
+
+            <h3>🔘 Buttons</h3>
+            <p>Buttons make your embeds interactive! You can add:</p>
+            <ul>
+                <li><strong>Link buttons</strong> – Open a URL when clicked</li>
+                <li>Up to <strong>25 buttons</strong> total (5 rows of 5)</li>
+            </ul>
+
+            <h4>Creating a Link Button</h4>
+            <p>When adding a button, fill in:</p>
+            <ul>
+                <li><strong>Label:</strong> The text shown on the button (e.g., "Join Our Discord")</li>
+                <li><strong>URL:</strong> The full link (must start with <code>https://</code>)</li>
+            </ul>
+
+            <div class="example-card">
+                <div class="example-header">📱 Example: Social Media Buttons</div>
+                <div class="example-content">
+                    <div class="field"><span class="field-name">Button 1:</span> Label = "Follow Twitter" | URL =
+                        https://twitter.com/yourhandle</div>
+                    <div class="field"><span class="field-name">Button 2:</span> Label = "Join TikTok" | URL =
+                        https://tiktok.com/@yourhandle</div>
+                    <div class="field"><span class="field-name">Button 3:</span> Label = "Shop Now" | URL =
+                        https://yourstore.com</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Scheduling Posts -->
+        <div class="section">
+            <h2><span class="section-number">5</span> Scheduling Posts for Later</h2>
+
+            <p>Want to post at a specific time? Kitsch Bot can schedule your embeds!</p>
+
+            <h3>How to Schedule</h3>
+            <ol>
+                <li>Start with <code>/embed create</code> as normal</li>
+                <li>Select your channel</li>
+                <li>Click <strong>"📅 Schedule"</strong> instead of "Post Now"</li>
+                <li>A modal will appear asking for:<br></li>
+            </ol>
+
+            <table>
+                <tr>
+                    <th>Field</th>
+                    <th>Format</th>
+                    <th>Example</th>
+                </tr>
+                <tr>
+                    <td><strong>Date</strong></td>
+                    <td><code>YYYY-MM-DD</code></td>
+                    <td><code>2024-12-25</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Time</strong></td>
+                    <td><code>HH:MM AM/PM</code></td>
+                    <td><code>09:00 PM</code></td>
+                </tr>
+            </table>
+
+            <div class="note">
+                All times are in <strong>Asia/Manila timezone (PHT)</strong>. Make sure to convert if you're in a
+                different timezone!
+            </div>
+
+            <h3>After Scheduling</h3>
+            <p>The bot will confirm your scheduled post and show you when it will be posted. The embed will
+                automatically appear at the scheduled time!</p>
+
+            <div class="tip">
+                Great for: Weekly announcements, event reminders, midnight launches, and time-sensitive content!
+            </div>
+        </div>
+
+        <!-- Section 6: Editing Embeds -->
+        <div class="section">
+            <h2><span class="section-number">6</span> Editing Existing Embeds</h2>
+
+            <p>Made a typo? Need to update information? You can edit any embed that Kitsch Bot has posted!</p>
+
+            <h3>How to Get the Message ID</h3>
+            <ol>
+                <li>Enable <strong>Developer Mode</strong> in Discord:<br>
+                    User Settings → Advanced → Developer Mode → ON</li>
+                <li>Right-click the embed message you want to edit</li>
+                <li>Click <strong>"Copy Message ID"</strong></li>
+            </ol>
+
+            <div class="warning">
+                Can't see "Copy Message ID"? Make sure Developer Mode is enabled in your Discord settings!
+            </div>
+
+            <h3>Editing the Embed</h3>
+            <div class="command-box">
+                <code>/embed edit message_id:1234567890123456789</code>
+                <div class="description">Replace the number with your actual message ID.</div>
+            </div>
+
+            <p>This will open the embed builder with all your existing content pre-filled. Make your changes and save!
+            </p>
+
+            <h3>What You Can Edit</h3>
+            <ul>
+                <li>✅ Title, description, author, footer</li>
+                <li>✅ Color</li>
+                <li>✅ Images (thumbnail and banner)</li>
+                <li>✅ Buttons</li>
+            </ul>
+        </div>
+
+        <!-- Section 7: Sticky Embeds -->
+        <div class="section">
+            <h2><span class="section-number">7</span> Making Embeds "Sticky"</h2>
+
+            <p>Sticky embeds stay at the <strong>bottom of the channel</strong>, always visible even as new messages are
+                sent!</p>
+
+            <h3>Perfect For:</h3>
+            <ul>
+                <li>Important rules or guidelines</li>
+                <li>Active event information</li>
+                <li>Welcome messages in high-traffic channels</li>
+                <li>Current promotions or announcements</li>
+            </ul>
+
+            <h3>How to Set a Sticky Embed</h3>
+            <ol>
+                <li>Create an embed or find an existing one's Message ID</li>
+                <li>Go to the channel where you want it sticky</li>
+                <li>Run this command:</li>
+            </ol>
+
+            <div class="command-box">
+                <code>/embed sticky action:Set Sticky message_id:1234567890123456789</code>
+            </div>
+
+            <h3>How to Remove a Sticky</h3>
+            <div class="command-box">
+                <code>/embed sticky action:Remove Sticky</code>
+                <div class="description">Run this in the channel where the sticky is set.</div>
+            </div>
+
+            <div class="note">
+                Only <strong>one sticky embed per channel</strong> is allowed. Setting a new one will replace the old
+                one.
+            </div>
+        </div>
+
+        <!-- Section 8: FAQ / Knowledge Base -->
+        <div class="section">
+            <h2><span class="section-number">8</span> Using the FAQ / Knowledge Base</h2>
+
+            <p>Create an interactive FAQ that members can browse themselves!</p>
+
+            <h3>Setting Up FAQs</h3>
+
+            <h4>1. Add FAQ Entries</h4>
+            <div class="command-box">
+                <code>/faq add category:General question:How do I verify?</code>
+                <div class="description">A modal will appear where you enter the answer.</div>
+            </div>
+
+            <h4>2. View All FAQs</h4>
+            <div class="command-box">
+                <code>/faq list</code>
+                <div class="description">Shows all FAQs with their IDs (needed for deletion).</div>
+            </div>
+
+            <h4>3. Delete an FAQ</h4>
+            <div class="command-box">
+                <code>/faq delete id:5</code>
+                <div class="description">Replace 5 with the actual FAQ ID from /faq list.</div>
+            </div>
+
+            <h4>4. Deploy the FAQ Menu</h4>
+            <div class="command-box">
+                <code>/faq deploy</code>
+                <div class="description">Posts an interactive FAQ menu that members can use!</div>
+            </div>
+
+            <h3>How Members Use It</h3>
+            <ol>
+                <li>They see a dropdown menu with categories</li>
+                <li>Selecting a category shows all questions in that category</li>
+                <li>Selecting a question shows the answer</li>
+                <li>"Back" buttons let them navigate easily</li>
+            </ol>
+
+            <div class="tip">
+                <strong>Good FAQ categories:</strong> General, Rules, Events, Verification, Roles, Partnerships
+            </div>
+        </div>
+
+        <!-- Section 9: Forum Posts -->
+        <div class="section">
+            <h2><span class="section-number">9</span> Posting to Forums</h2>
+
+            <p>Create new forum threads directly with Kitsch Bot!</p>
+
+            <div class="command-box">
+                <code>/forum post</code>
+                <div class="description">Opens a modal to create a new forum thread.</div>
+            </div>
+
+            <p>Fill in:</p>
+            <ul>
+                <li><strong>Thread Title:</strong> The name of your forum post</li>
+                <li><strong>Message Content:</strong> The content of your post (up to 2000 characters)</li>
+            </ul>
+        </div>
+
+        <!-- Section 10: Troubleshooting -->
+        <div class="section">
+            <h2><span class="section-number">10</span> Troubleshooting Common Issues</h2>
+
+            <table>
+                <tr>
+                    <th>Problem</th>
+                    <th>Solution</th>
+                </tr>
+                <tr>
+                    <td>"You don't have permission"</td>
+                    <td>You need Admin, Event Organizer, or Mod role</td>
+                </tr>
+                <tr>
+                    <td>Command not showing up</td>
+                    <td>Make sure the bot has been added to your server. Try typing <code>/help</code></td>
+                </tr>
+                <tr>
+                    <td>Image not displaying</td>
+                    <td>Make sure you're using a direct image URL ending in .png, .jpg, etc.</td>
+                </tr>
+                <tr>
+                    <td>Can't copy Message ID</td>
+                    <td>Enable Developer Mode: User Settings → Advanced → Developer Mode</td>
+                </tr>
+                <tr>
+                    <td>Scheduled post didn't appear</td>
+                    <td>Check the timezone (Asia/Manila). Make sure the bot was online at the scheduled time.</td>
+                </tr>
+                <tr>
+                    <td>Button not working</td>
+                    <td>URL must start with <code>https://</code> or <code>http://</code></td>
+                </tr>
+                <tr>
+                    <td>Interaction failed</td>
+                    <td>The bot might have restarted. Try the command again.</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Section 11: Cheat Sheet -->
+        <div class="section">
+            <h2><span class="section-number">11</span> Quick Reference Cheat Sheet</h2>
+
+            <h3>📝 Embed Commands</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>What It Does</th>
+                </tr>
+                <tr>
+                    <td><code>/embed create</code></td>
+                    <td>Create a new embed</td>
+                </tr>
+                <tr>
+                    <td><code>/embed edit message_id:ID</code></td>
+                    <td>Edit an existing embed</td>
+                </tr>
+                <tr>
+                    <td><code>/embed list</code></td>
+                    <td>View recent embeds</td>
+                </tr>
+                <tr>
+                    <td><code>/embed sticky action:Set Sticky message_id:ID</code></td>
+                    <td>Make an embed sticky</td>
+                </tr>
+                <tr>
+                    <td><code>/embed sticky action:Remove Sticky</code></td>
+                    <td>Remove sticky from channel</td>
+                </tr>
+            </table>
+
+            <h3>❓ FAQ Commands</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>What It Does</th>
+                </tr>
+                <tr>
+                    <td><code>/faq add category:X question:Y</code></td>
+                    <td>Add a new FAQ entry</td>
+                </tr>
+                <tr>
+                    <td><code>/faq list</code></td>
+                    <td>List all FAQs</td>
+                </tr>
+                <tr>
+                    <td><code>/faq delete id:X</code></td>
+                    <td>Delete an FAQ</td>
+                </tr>
+                <tr>
+                    <td><code>/faq deploy</code></td>
+                    <td>Post interactive FAQ menu</td>
+                </tr>
+            </table>
+
+            <h3>📌 Other Commands</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>What It Does</th>
+                </tr>
+                <tr>
+                    <td><code>/help</code></td>
+                    <td>Quick command overview</td>
+                </tr>
+                <tr>
+                    <td><code>/guide</code></td>
+                    <td>Full guide in Discord</td>
+                </tr>
+                <tr>
+                    <td><code>/forum post</code></td>
+                    <td>Create a forum thread</td>
+                </tr>
+            </table>
+
+            <h3>✨ Discord Markdown Formatting</h3>
+            <table>
+                <tr>
+                    <th>Format</th>
+                    <th>Syntax</th>
+                    <th>Result</th>
+                </tr>
+                <tr>
+                    <td>Bold</td>
+                    <td><code>**text**</code></td>
+                    <td><strong>text</strong></td>
+                </tr>
+                <tr>
+                    <td>Italic</td>
+                    <td><code>*text*</code></td>
+                    <td><em>text</em></td>
+                </tr>
+                <tr>
+                    <td>Underline</td>
+                    <td><code>__text__</code></td>
+                    <td><u>text</u></td>
+                </tr>
+                <tr>
+                    <td>Strikethrough</td>
+                    <td><code>~~text~~</code></td>
+                    <td><s>text</s></td>
+                </tr>
+                <tr>
+                    <td>Link</td>
+                    <td><code>[text](url)</code></td>
+                    <td>Clickable link</td>
+                </tr>
+                <tr>
+                    <td>Code</td>
+                    <td><code>`text`</code></td>
+                    <td>Monospace text</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>✨ <strong>Kitsch Bot</strong> • Made with 💖</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">To save this guide as a PDF: Press <strong>Ctrl+P</strong>
+                (or Cmd+P on Mac) and select "Save as PDF"</p>
+            <p style="margin-top: 20px; font-size: 0.85rem; color: var(--kitsch-light);">by <strong>Aljay
+                    Leodones</strong></p>
+        </div>
+    </div>
+</body>
+
+</html>

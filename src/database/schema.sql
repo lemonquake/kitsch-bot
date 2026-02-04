@@ -62,3 +62,27 @@ CREATE TABLE IF NOT EXISTS faqs (
   answer TEXT NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Store embed templates
+CREATE TABLE IF NOT EXISTS embed_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  category TEXT DEFAULT 'General',
+  config TEXT NOT NULL,  -- JSON string of embed configuration
+  created_by TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(guild_id, name)
+);
+
+-- Store template buttons
+CREATE TABLE IF NOT EXISTS template_buttons (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  template_id INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  style TEXT NOT NULL,
+  url TEXT,
+  row_index INTEGER DEFAULT 0,
+  position INTEGER DEFAULT 0,
+  FOREIGN KEY (template_id) REFERENCES embed_templates(id) ON DELETE CASCADE
+);
