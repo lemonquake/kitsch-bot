@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS scheduled_jobs (
   embed_id INTEGER NOT NULL,
   cron_expression TEXT,
   scheduled_time TEXT NOT NULL,
+  recurrence TEXT,                -- JSON string e.g. ["MON", "WED"]
+  target_channels TEXT,           -- JSON string e.g. ["123", "456"]
+  name TEXT,                      -- Friendly name
   status TEXT DEFAULT 'pending',  -- pending, completed, cancelled
   FOREIGN KEY (embed_id) REFERENCES embeds(id) ON DELETE CASCADE
 );

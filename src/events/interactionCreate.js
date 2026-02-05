@@ -45,7 +45,7 @@ module.exports = {
             }
         }
         // Handle select menus
-        else if (interaction.isStringSelectMenu()) {
+        else if (interaction.isAnySelectMenu()) {
             try {
                 await handleSelectMenu(interaction);
             } catch (error) {

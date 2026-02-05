@@ -31,11 +31,41 @@ async function initDatabase() {
     const schema = fs.readFileSync(schemaPath, 'utf-8');
     db.run(schema);
 
+    // Run migrations
+    migrateDatabase();
+
     // Save to file
     saveDatabase();
 
     console.log('✅ Database initialized');
     return db;
+}
+
+/**
+ * Migrate database to latest schema
+ */
+function migrateDatabase() {
+    try {
+        // Check for new columns in scheduled_jobs
+        const tableInfo = db.exec("PRAGMA table_info(scheduled_jobs)")[0].values;
+        const columns = tableInfo.map(c => c[1]);
+
+        if (!columns.includes('recurrence')) {
+            console.log('Migrating: Adding recurrence column to scheduled_jobs');
+            db.run("ALTER TABLE scheduled_jobs ADD COLUMN recurrence TEXT");
+        }
+        if (!columns.includes('target_channels')) {
+            console.log('Migrating: Adding target_channels column to scheduled_jobs');
+            db.run("ALTER TABLE scheduled_jobs ADD COLUMN target_channels TEXT");
+        }
+        if (!columns.includes('name')) {
+            console.log('Migrating: Adding name column to scheduled_jobs');
+            db.run("ALTER TABLE scheduled_jobs ADD COLUMN name TEXT");
+        }
+
+    } catch (error) {
+        console.error('Error migrating database:', error);
+    }
 }
 
 /**
@@ -240,12 +270,18 @@ function deleteEmbedButtons(embedId) {
 /**
  * Create a scheduled job
  */
-function createScheduledJob(embedId, scheduledTime) {
+function createScheduledJob(embedId, scheduledTime, recurrence = null, targetChannels = null, name = null) {
     const stmt = db.prepare(`
-    INSERT INTO scheduled_jobs (embed_id, scheduled_time)
-    VALUES (?, ?)
+    INSERT INTO scheduled_jobs (embed_id, scheduled_time, recurrence, target_channels, name)
+    VALUES (?, ?, ?, ?, ?)
   `);
-    stmt.run([embedId, scheduledTime]);
+    stmt.run([
+        embedId,
+        scheduledTime,
+        recurrence ? JSON.stringify(recurrence) : null,
+        targetChannels ? JSON.stringify(targetChannels) : null,
+        name
+    ]);
     stmt.free();
 
     const result = db.exec('SELECT last_insert_rowid() as id');
@@ -271,10 +307,32 @@ function getPendingJobs() {
     while (stmt.step()) {
         const row = stmt.getAsObject();
         row.config = JSON.parse(row.config);
+        if (row.recurrence) row.recurrence = JSON.parse(row.recurrence);
+        if (row.target_channels) row.target_channels = JSON.parse(row.target_channels);
         results.push(row);
     }
     stmt.free();
     return results;
+}
+
+/**
+ * Update scheduled job details
+ */
+function updateScheduledJob(jobId, scheduledTime, recurrence, targetChannels, name) {
+    const stmt = db.prepare(`
+    UPDATE scheduled_jobs 
+    SET scheduled_time = ?, recurrence = ?, target_channels = ?, name = ?
+    WHERE id = ?
+  `);
+    stmt.run([
+        scheduledTime,
+        recurrence ? JSON.stringify(recurrence) : null,
+        targetChannels ? JSON.stringify(targetChannels) : null,
+        name,
+        jobId
+    ]);
+    stmt.free();
+    saveDatabase();
 }
 
 /**
@@ -450,6 +508,7 @@ module.exports = {
     createScheduledJob,
     getPendingJobs,
     updateJobStatus,
+    updateScheduledJob, // Add this
     cancelScheduledJob,
     // Sticky embed operations
     createStickyEmbed,

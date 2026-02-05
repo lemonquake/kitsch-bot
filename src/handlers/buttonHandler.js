@@ -46,6 +46,9 @@ async function handleButton(interaction) {
         await handleFAQBackToCategories(interaction);
     } else if (customId.startsWith('faq_back_to_questions_')) {
         await handleFAQBackToQuestions(interaction);
+    } else if (customId.startsWith('sched_btn_')) {
+        const { handleScheduleInteraction } = require('./scheduleHandler');
+        await handleScheduleInteraction(interaction);
     }
 }
 

@@ -92,32 +92,58 @@ async function executeJob(job) {
             return;
         }
 
-        // Get the channel
-        const channel = await client.channels.fetch(job.channel_id);
-        if (!channel) {
-            console.error(`Channel ${job.channel_id} not found`);
-            db.updateJobStatus(job.id, 'failed');
-            return;
-        }
+        // Handle target channels (array or single channel_id fallback)
+        let channels = job.target_channels || (job.channel_id ? [job.channel_id] : []);
+        // Clean up duplicates and empty
+        channels = [...new Set(channels)].filter(c => c);
 
-        // Build the embed
+        console.log(`Doing job ${job.id} for channels:`, channels);
+
+        // Build content once
         const embed = buildEmbed(job.config);
-
-        // Get buttons from database
         const buttons = db.getEmbedButtons(job.embed_id);
         const components = buildButtons(buttons);
 
-        // Send the message
-        const message = await channel.send({
-            embeds: [embed],
-            components: components,
-        });
+        for (const channelId of channels) {
+            try {
+                const channel = await client.channels.fetch(channelId);
+                if (!channel) continue;
 
-        // Update database
-        db.updateEmbedMessageId(job.embed_id, message.id);
-        db.updateJobStatus(job.id, 'completed');
+                const message = await channel.send({
+                    embeds: [embed],
+                    components: components,
+                });
 
-        console.log(`✅ Scheduled message posted: ${message.id}`);
+                // If this is the "primary" channel (stored in embed table), update message ID
+                // Or maybe just update last message ID in sticky table if we had one?
+                // For now, we only store one message_id in embeds table. 
+                // We'll just store the last one success.
+                if (channelId === job.channel_id || channels.length === 1) {
+                    db.updateEmbedMessageId(job.embed_id, message.id);
+                }
+            } catch (err) {
+                console.error(`Failed to send to channel ${channelId}:`, err.message);
+            }
+        }
+
+        // Handle Recurrence
+        if (job.recurrence && job.recurrence.length > 0) {
+            const nextDate = calculateNextOccurrence(job.scheduled_time, job.recurrence);
+            console.log(`🔁 Rescheduling recurring job ${job.id} for ${nextDate.toISOString()}`);
+
+            // Update DB
+            db.updateScheduledJob(job.id, nextDate.toISOString(), job.recurrence, job.target_channels, job.name);
+
+            // Update active job in memory
+            job.scheduled_time = nextDate.toISOString();
+            scheduleJob(job); // Re-add to map with new time
+
+            // Do NOT mark as completed
+        } else {
+            db.updateJobStatus(job.id, 'completed');
+            console.log(`✅ Scheduled job ${job.id} completed`);
+        }
+
     } catch (error) {
         console.error('Error executing scheduled job:', error);
         db.updateJobStatus(job.id, 'failed');
@@ -125,22 +151,54 @@ async function executeJob(job) {
 }
 
 /**
+ * Calculate next occurrence based on current time and recurrence days
+ * recurrence: ["MON", "WED"]
+ */
+function calculateNextOccurrence(lastScheduledStr, days) {
+    // Days mapping
+    const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
+    const validDays = days.map(d => dayMap[d]).sort((a, b) => a - b);
+
+    let date = new Date(lastScheduledStr);
+    // Be sure to start checking from "now" or "last scheduled + 1 minute" to avoid infinite loop if called immediately?
+    // Actually, we usually call this AFTER execution, so the time is in the past or now.
+    // We want the NEXT valid day.
+
+    // If we just executed, we add 1 day and check.
+    date.setDate(date.getDate() + 1);
+
+    // Safety break
+    let loops = 0;
+    while (loops < 14) { // Max 2 weeks search
+        if (validDays.includes(date.getDay())) {
+            return date;
+        }
+        date.setDate(date.getDate() + 1);
+        loops++;
+    }
+
+    return date; // Fallback
+}
+
+/**
  * Create a new scheduled post
  * @param {Object} options - Scheduling options
  * @returns {Object} Created job info
  */
-function createScheduledPost({ embedId, channelId, guildId, config, scheduledTime }) {
+function createScheduledPost({ embedId, targetChannels, guildId, config, scheduledTime, recurrence, name }) {
     // Create scheduled job in database
-    const jobId = db.createScheduledJob(embedId, scheduledTime);
+    const jobId = db.createScheduledJob(embedId, scheduledTime, recurrence, targetChannels, name);
 
     // Schedule in memory
     const job = {
         id: jobId,
         embed_id: embedId,
-        channel_id: channelId,
+        target_channels: targetChannels,
         guild_id: guildId,
         config: config,
         scheduled_time: scheduledTime,
+        recurrence: recurrence,
+        name: name
     };
 
     scheduleJob(job);
@@ -163,6 +221,55 @@ function cancelScheduledPost(embedId) {
 
     // Update database
     db.cancelScheduledJob(embedId);
+}
+
+
+
+/**
+ * Create a Date object from components in a specific timezone
+ * @param {number} year
+ * @param {number} month (0-11)
+ * @param {number} day
+ * @param {number} hour
+ * @param {number} minute
+ * @param {string} timeZone
+ * @returns {Date}
+ */
+function createDateInTimezone(year, month, day, hour, minute, timeZone) {
+    // Create a date assuming the input components are UTC
+    const utcDate = new Date(Date.UTC(year, month, day, hour, minute));
+
+    // Get the time parts of this UTC date in the target timezone
+    const tzDateStr = utcDate.toLocaleString('en-US', { timeZone, hour12: false });
+
+    // Creating a date from the formatted string to get the "shifted" time
+    // We basically want to know "What time is 10:00 UTC in Manila?" -> "18:00"
+    // Then we see the difference is 8 hours.
+
+    // A more reliable way:
+    // Get the ISO string of the wall time in target timezone
+    // e.g., we want 10:00 Manila.
+    // 10:00 UTC is 18:00 Manila. diff = +8h.
+    // We want 10:00 Manila, so we need 02:00 UTC.
+    // So we need to subtract the offset.
+
+    // Let's use the 'parts' approach to calculate offset
+    const options = { timeZone, year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false };
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(utcDate);
+
+    const tzParts = {};
+    parts.forEach(p => tzParts[p.type] = p.value);
+
+    // Construct a Date object from the parts found in the timezone
+    // e.g. if utcDate is 10:00 UTC, and timezone says it's 18:00, this creates 18:00 UTC (system local if using Date.UTC? No, use Date.UTC)
+    const tzDateAsUtc = new Date(Date.UTC(tzParts.year, tzParts.month - 1, tzParts.day, tzParts.hour, tzParts.minute, tzParts.second));
+
+    // Calculate offset in milliseconds
+    const offset = tzDateAsUtc.getTime() - utcDate.getTime();
+
+    // Apply reverse offset to get the correct UTC timestamp for the desired wall time
+    return new Date(utcDate.getTime() - offset);
 }
 
 /**
@@ -190,10 +297,9 @@ function parseDateTime(dateStr, timeStr) {
             hours = 0;
         }
 
-        // Parse date
-        const [year, month, day] = dateStr.split('-').map(Number);
-
-        return new Date(year, month - 1, day, hours, minutes);
+        // Create date using configured timezone
+        const { timezone } = require('../config');
+        return createDateInTimezone(year, month - 1, day, hours, minutes, timezone);
     } catch (error) {
         console.error('Error parsing date/time:', error);
         return null;

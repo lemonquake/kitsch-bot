@@ -18,6 +18,9 @@ async function handleSelectMenu(interaction) {
         await handleFAQCategorySelect(interaction);
     } else if (customId === 'faq_question_select') {
         await handleFAQQuestionSelect(interaction);
+    } else if (customId.startsWith('sched_select_')) {
+        const { handleScheduleSelect } = require('./scheduleHandler');
+        await handleScheduleSelect(interaction);
     }
 }
 

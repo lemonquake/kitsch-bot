@@ -31,6 +31,9 @@ async function handleModalSubmit(interaction) {
         await handleFAQAddModal(interaction);
     } else if (customId.startsWith('template_save_')) {
         await handleTemplateSaveModal(interaction);
+    } else if (customId.startsWith('sched_modal_')) {
+        const { handleScheduleModal } = require('./scheduleHandler');
+        await handleScheduleModal(interaction);
     }
 }
 
