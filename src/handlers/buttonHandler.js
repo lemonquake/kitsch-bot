@@ -49,6 +49,8 @@ async function handleButton(interaction) {
     } else if (customId.startsWith('sched_btn_')) {
         const { handleScheduleInteraction } = require('./scheduleHandler');
         await handleScheduleInteraction(interaction);
+    } else if (customId.startsWith('embed_edit_action_')) {
+        await handleEditButtonAction(interaction);
     }
 }
 
@@ -450,4 +452,107 @@ async function handleFAQBackToQuestions(interaction) {
 
 module.exports = {
     handleButton,
+    handleEditButtonSelect,
 };
+
+/**
+ * Handle button selection for edit/remove
+ */
+async function handleEditButtonSelect(interaction) {
+    const sessionId = interaction.customId.split('_').pop();
+    const session = buildSessions.get(sessionId);
+    const selectedIndex = parseInt(interaction.values[0]);
+
+    if (!session) return interaction.reply({ content: 'Session expired', ephemeral: true });
+
+    // Store selected button index
+    session.editingButtonIndex = selectedIndex;
+    buildSessions.set(sessionId, session);
+
+    // Ask user what to do with the button
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`embed_edit_action_edit_${sessionId}`)
+            .setLabel('Edit Button')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('✏️'),
+        new ButtonBuilder()
+            .setCustomId(`embed_edit_action_remove_${sessionId}`)
+            .setLabel('Remove Button')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('🗑️'),
+        new ButtonBuilder()
+            .setCustomId(`embed_edit_action_cancel_${sessionId}`)
+            .setLabel('Cancel')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    await interaction.reply({
+        content: `What would you like to do with button **#${selectedIndex + 1}**?`,
+        components: [row],
+        ephemeral: true
+    });
+}
+
+/**
+ * Handle edit action (Edit vs Remove)
+ */
+async function handleEditButtonAction(interaction) {
+    const parts = interaction.customId.split('_');
+    const action = parts[3]; // edit, remove, cancel
+    const sessionId = parts[4];
+    const session = buildSessions.get(sessionId);
+
+    if (!session) return interaction.reply({ content: 'Session expired', ephemeral: true });
+
+    // If we're cancelling, just delete the ephemeral message or update it
+    if (action === 'cancel') {
+        return interaction.update({ content: 'Cancelled.', components: [] });
+    }
+
+    const index = session.editingButtonIndex;
+    if (index === undefined || index < 0 || index >= session.buttons.length) {
+        return interaction.update({ content: '❌ Invalid button selection.', components: [] });
+    }
+
+    if (action === 'remove') {
+        session.buttons.splice(index, 1);
+        delete session.editingButtonIndex;
+        // Re-render main view
+        // Since we are in a new ephemeral message, we can't edit the MAIN one easily without sending a new one.
+        // But showButtonsStep uses editReply if deferred/replied.
+        // We can try to just send a fresh "Step 3" message.
+        await interaction.update({ content: '✅ Button removed.', components: [] });
+        await showButtonsStep(interaction, sessionId);
+    }
+    else if (action === 'edit') {
+        const btn = session.buttons[index];
+        // Show modal pre-filled
+        const modal = new ModalBuilder()
+            .setCustomId(`embed_button_edit_${sessionId}`) // Distinct ID to handle edit save
+            .setTitle('✏️ Edit Button');
+
+        const labelInput = new TextInputBuilder()
+            .setCustomId('label')
+            .setLabel('Button Label')
+            .setStyle(TextInputStyle.Short)
+            .setValue(btn.label)
+            .setMaxLength(80)
+            .setRequired(true);
+
+        const urlInput = new TextInputBuilder()
+            .setCustomId('url')
+            .setLabel('URL (leave empty for interactive)')
+            .setStyle(TextInputStyle.Short)
+            .setValue(btn.url || '')
+            .setPlaceholder('https://example.com')
+            .setRequired(false);
+
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(labelInput),
+            new ActionRowBuilder().addComponents(urlInput)
+        );
+
+        await interaction.showModal(modal);
+    }
+}

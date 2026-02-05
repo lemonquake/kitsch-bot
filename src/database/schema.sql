@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS embeds (
   message_id TEXT UNIQUE,
   channel_id TEXT NOT NULL,
   guild_id TEXT NOT NULL,
+  content TEXT,      -- Content outside the embed
+  message_type TEXT DEFAULT 'embed', -- 'embed' or 'normal'
   config TEXT NOT NULL,  -- JSON string of embed configuration
   scheduled_time TEXT,   -- ISO timestamp for scheduled posts
   is_sent INTEGER DEFAULT 0,
@@ -72,7 +74,11 @@ CREATE TABLE IF NOT EXISTS embed_templates (
   guild_id TEXT NOT NULL,
   name TEXT NOT NULL,
   category TEXT DEFAULT 'General',
+  content TEXT,          -- Content outside the embed
+  message_type TEXT DEFAULT 'embed',
   config TEXT NOT NULL,  -- JSON string of embed configuration
+  recurrence TEXT,       -- JSON string for default recurrence
+  target_channels TEXT,  -- JSON string for default channels
   created_by TEXT NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(guild_id, name)

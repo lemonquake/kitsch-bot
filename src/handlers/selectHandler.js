@@ -21,6 +21,9 @@ async function handleSelectMenu(interaction) {
     } else if (customId.startsWith('sched_select_')) {
         const { handleScheduleSelect } = require('./scheduleHandler');
         await handleScheduleSelect(interaction);
+    } else if (customId.startsWith('embed_edit_button_select_')) {
+        const { handleEditButtonSelect } = require('./buttonHandler');
+        await handleEditButtonSelect(interaction);
     }
 }
 

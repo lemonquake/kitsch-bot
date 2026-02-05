@@ -63,6 +63,40 @@ function migrateDatabase() {
             db.run("ALTER TABLE scheduled_jobs ADD COLUMN name TEXT");
         }
 
+        // Check for new columns in embeds
+        const embedsInfo = db.exec("PRAGMA table_info(embeds)")[0].values;
+        const embedsColumns = embedsInfo.map(c => c[1]);
+
+        if (!embedsColumns.includes('content')) {
+            console.log('Migrating: Adding content column to embeds');
+            db.run("ALTER TABLE embeds ADD COLUMN content TEXT");
+        }
+        if (!embedsColumns.includes('message_type')) {
+            console.log('Migrating: Adding message_type column to embeds');
+            db.run("ALTER TABLE embeds ADD COLUMN message_type TEXT DEFAULT 'embed'");
+        }
+
+        // Check for new columns in embed_templates
+        const templatesInfo = db.exec("PRAGMA table_info(embed_templates)")[0].values;
+        const templatesColumns = templatesInfo.map(c => c[1]);
+
+        if (!templatesColumns.includes('content')) {
+            console.log('Migrating: Adding content column to embed_templates');
+            db.run("ALTER TABLE embed_templates ADD COLUMN content TEXT");
+        }
+        if (!templatesColumns.includes('message_type')) {
+            console.log('Migrating: Adding message_type column to embed_templates');
+            db.run("ALTER TABLE embed_templates ADD COLUMN message_type TEXT DEFAULT 'embed'");
+        }
+        if (!templatesColumns.includes('recurrence')) {
+            console.log('Migrating: Adding recurrence column to embed_templates');
+            db.run("ALTER TABLE embed_templates ADD COLUMN recurrence TEXT");
+        }
+        if (!templatesColumns.includes('target_channels')) {
+            console.log('Migrating: Adding target_channels column to embed_templates');
+            db.run("ALTER TABLE embed_templates ADD COLUMN target_channels TEXT");
+        }
+
     } catch (error) {
         console.error('Error migrating database:', error);
     }
@@ -96,13 +130,13 @@ function getDb() {
 /**
  * Create a new embed configuration
  */
-function createEmbed({ channelId, guildId, config: embedConfig, scheduledTime, createdBy }) {
+function createEmbed({ channelId, guildId, config: embedConfig, scheduledTime, createdBy, content, messageType }) {
     const stmt = db.prepare(`
-    INSERT INTO embeds (channel_id, guild_id, config, scheduled_time, created_by)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO embeds (channel_id, guild_id, config, scheduled_time, created_by, content, message_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-    stmt.run([channelId, guildId, JSON.stringify(embedConfig), scheduledTime || null, createdBy]);
+    stmt.run([channelId, guildId, JSON.stringify(embedConfig), scheduledTime || null, createdBy, content || null, messageType || 'embed']);
     stmt.free();
 
     const result = db.exec('SELECT last_insert_rowid() as id');
@@ -136,7 +170,7 @@ function getEmbedByMessageId(messageId) {
     let result = null;
     if (stmt.step()) {
         const row = stmt.getAsObject();
-        row.config = JSON.parse(row.config);
+        if (row.config) row.config = JSON.parse(row.config);
         result = row;
     }
     stmt.free();
@@ -153,7 +187,7 @@ function getEmbedById(embedId) {
     let result = null;
     if (stmt.step()) {
         const row = stmt.getAsObject();
-        row.config = JSON.parse(row.config);
+        if (row.config) row.config = JSON.parse(row.config);
         result = row;
     }
     stmt.free();
@@ -163,13 +197,13 @@ function getEmbedById(embedId) {
 /**
  * Update embed configuration
  */
-function updateEmbedConfig(embedId, embedConfig) {
+function updateEmbedConfig(embedId, embedConfig, content, messageType) {
     const stmt = db.prepare(`
     UPDATE embeds 
-    SET config = ?, updated_at = datetime('now')
+    SET config = ?, content = ?, message_type = ?, updated_at = datetime('now')
     WHERE id = ?
   `);
-    stmt.run([JSON.stringify(embedConfig), embedId]);
+    stmt.run([JSON.stringify(embedConfig), content || null, messageType || 'embed', embedId]);
     stmt.free();
     saveDatabase();
 }
@@ -189,7 +223,7 @@ function getGuildEmbeds(guildId, limit = 25) {
 
     while (stmt.step()) {
         const row = stmt.getAsObject();
-        row.config = JSON.parse(row.config);
+        if (row.config) row.config = JSON.parse(row.config);
         results.push(row);
     }
     stmt.free();
@@ -370,12 +404,22 @@ function cancelScheduledJob(embedId) {
 /**
  * Create a new embed template
  */
-function createTemplate(guildId, name, category, config, createdBy) {
+function createTemplate(guildId, name, category, config, createdBy, content, messageType, recurrence, targetChannels) {
     const stmt = db.prepare(`
-        INSERT INTO embed_templates (guild_id, name, category, config, created_by)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO embed_templates (guild_id, name, category, config, created_by, content, message_type, recurrence, target_channels)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run([guildId, name, category, JSON.stringify(config), createdBy]);
+    stmt.run([
+        guildId,
+        name,
+        category,
+        JSON.stringify(config),
+        createdBy,
+        content || null,
+        messageType || 'embed',
+        recurrence ? JSON.stringify(recurrence) : null,
+        targetChannels ? JSON.stringify(targetChannels) : null
+    ]);
     stmt.free();
 
     const result = db.exec('SELECT last_insert_rowid() as id');
@@ -418,7 +462,9 @@ function getTemplates(guildId) {
 
     while (stmt.step()) {
         const row = stmt.getAsObject();
-        row.config = JSON.parse(row.config);
+        if (row.config) row.config = JSON.parse(row.config);
+        if (row.recurrence) row.recurrence = JSON.parse(row.recurrence);
+        if (row.target_channels) row.target_channels = JSON.parse(row.target_channels);
         results.push(row);
     }
     stmt.free();
@@ -435,7 +481,9 @@ function getTemplateByName(guildId, name) {
     let result = null;
     if (stmt.step()) {
         const row = stmt.getAsObject();
-        row.config = JSON.parse(row.config);
+        if (row.config) row.config = JSON.parse(row.config);
+        if (row.recurrence) row.recurrence = JSON.parse(row.recurrence);
+        if (row.target_channels) row.target_channels = JSON.parse(row.target_channels);
         result = row;
     }
     stmt.free();
@@ -452,7 +500,9 @@ function getTemplateById(id) {
     let result = null;
     if (stmt.step()) {
         const row = stmt.getAsObject();
-        row.config = JSON.parse(row.config);
+        if (row.config) row.config = JSON.parse(row.config);
+        if (row.recurrence) row.recurrence = JSON.parse(row.recurrence);
+        if (row.target_channels) row.target_channels = JSON.parse(row.target_channels);
         result = row;
     }
     stmt.free();

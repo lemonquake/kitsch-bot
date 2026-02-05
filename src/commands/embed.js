@@ -265,7 +265,14 @@ async function handleEdit(interaction) {
         messageId: messageId,
         embedId: embedData.id,
         config: embedData.config,
-        buttons: db.getEmbedButtons(embedData.id),
+        buttons: db.getEmbedButtons(embedData.id).map(b => ({
+            label: b.label,
+            style: b.style,
+            url: b.url,
+            customId: b.custom_id,
+            rowIndex: b.row_index,
+            position: b.position
+        })),
         isEdit: true,
         step: 'content',
     });

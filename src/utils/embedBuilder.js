@@ -84,14 +84,22 @@ function buildEmbed(embedConfig) {
     }
 
     // URL
-    if (embedConfig.url) {
+    if (isValidUrl(embedConfig.url)) {
         embed.setURL(embedConfig.url);
     }
 
     return embed;
 }
 
-
+function isValidUrl(string) {
+    if (!string) return false;
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
 
 function getColorOptions() {
     return [
@@ -124,8 +132,8 @@ function createPreviewSummary(embedConfig) {
         parts.push(`**Description:** ${desc}`);
     }
     if (embedConfig.color) parts.push(`**Color:** ${embedConfig.color}`);
-    if (embedConfig.image) parts.push(`**Image:** ✓`);
-    if (embedConfig.thumbnail) parts.push(`**Thumbnail:** ✓`);
+    if (isValidUrl(embedConfig.image)) parts.push(`**Image:** ✓`);
+    if (isValidUrl(embedConfig.thumbnail)) parts.push(`**Thumbnail:** ✓`);
 
     return parts.join('\n') || 'Empty embed';
 }
@@ -134,4 +142,5 @@ module.exports = {
     buildEmbed,
     getColorOptions,
     createPreviewSummary,
+    isValidUrl,
 };

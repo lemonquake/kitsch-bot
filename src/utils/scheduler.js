@@ -99,6 +99,11 @@ async function executeJob(job) {
 
         console.log(`Doing job ${job.id} for channels:`, channels);
 
+        // Fetch full embed data including content and message_type
+        const embedData = db.getEmbedById(job.embed_id);
+        const content = embedData ? embedData.content : null;
+        const messageType = embedData ? (embedData.message_type || 'embed') : 'embed';
+
         // Build content once
         const embed = buildEmbed(job.config);
         const buttons = db.getEmbedButtons(job.embed_id);
@@ -109,10 +114,19 @@ async function executeJob(job) {
                 const channel = await client.channels.fetch(channelId);
                 if (!channel) continue;
 
-                const message = await channel.send({
-                    embeds: [embed],
+                const payload = {
                     components: components,
-                });
+                };
+
+                if (content) {
+                    payload.content = content;
+                }
+
+                if (messageType === 'embed') {
+                    payload.embeds = [embed];
+                }
+
+                const message = await channel.send(payload);
 
                 // If this is the "primary" channel (stored in embed table), update message ID
                 // Or maybe just update last message ID in sticky table if we had one?

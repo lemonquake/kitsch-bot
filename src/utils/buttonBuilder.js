@@ -44,10 +44,21 @@ function buildButtons(buttons) {
             .setStyle(styleMap[btn.style] || ButtonStyle.Primary);
 
         // Link buttons use URL, other buttons use customId
-        if (btn.style === 'LINK' && btn.url) {
+        if (btn.style === 'LINK' && isValidUrl(btn.url)) {
             button.setURL(btn.url);
         } else {
-            button.setCustomId(btn.customId || `btn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+            // Fallback for invalid URLs or non-link buttons
+            if (btn.style === 'LINK') {
+                // If link style but invalid URL, degrade to Primary with customId (or disabled)
+                // Better to just not set URL and let it fail? No, that throws.
+                // We should probably change style to PRIMARY if URL is invalid to avoid crash
+                button.setStyle(ButtonStyle.Primary);
+                button.setCustomId(`btn_invalid_${Date.now()}`);
+                button.setLabel(`${btn.label} (Invalid URL)`);
+                button.setDisabled(true);
+            } else {
+                button.setCustomId(btn.customId || `btn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+            }
         }
 
         // Optional emoji
@@ -106,4 +117,15 @@ module.exports = {
     getButtonStyleOptions,
     createButtonPreview,
     styleMap,
+    isValidUrl,
 };
+
+function isValidUrl(string) {
+    if (!string) return false;
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}

@@ -29,11 +29,8 @@ async function handleCreate(interaction) {
         guildId: interaction.guild.id,
         channelId: null,
         scheduledTime: null,
-        config: {
-            title: 'New Scheduled Message',
-            description: 'Edit this description...',
-            color: '#0099ff'
-        },
+        content: '', // Content outside embed
+        messageType: 'embed', // 'embed' or 'normal'
         config: {
             title: 'New Scheduled Message',
             description: 'Edit this description...',
@@ -127,7 +124,9 @@ async function handleEdit(interaction) {
         guildId: interaction.guild.id,
         channelId: job.channel_id,
         scheduledTime: new Date(job.scheduled_time),
-        config: JSON.parse(embed.config), // Accessing raw DB row usually returns string for JSON columns
+        content: embed.content || '',
+        messageType: embed.message_type || 'embed',
+        config: typeof embed.config === 'string' ? JSON.parse(embed.config) : embed.config,
         buttons: buttons.map(b => ({
             label: b.label,
             style: b.style,
@@ -187,22 +186,26 @@ async function renderDashboard(interaction, sessionId) {
             { name: '📍 Channels', value: session.targetChannels.length > 0 ? `${session.targetChannels.length} channel(s)` : '❌ Not Set', inline: true },
             { name: '🗓️ Time', value: session.scheduledTime ? `<t:${Math.floor(new Date(session.scheduledTime).getTime() / 1000)}:F>` : '❌ Not Set', inline: true },
             { name: '🔁 Recurrence', value: session.recurrence.length > 0 ? session.recurrence.join(', ') : 'One-time', inline: true },
+            { name: '📝 Type', value: session.messageType === 'embed' ? 'Embed' : 'Normal', inline: true },
+            { name: '💬 Content', value: session.content ? (session.content.length > 20 ? session.content.substring(0, 20) + '...' : session.content) : '(None)', inline: true },
             { name: '🔘 Buttons', value: `${session.buttons.length}`, inline: true }
         )
         .setColor(session.config.color || '#0099ff');
 
     // Controls
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('sched_btn_content').setLabel('Edit Content').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
-        new ButtonBuilder().setCustomId('sched_btn_images').setLabel('Images').setStyle(ButtonStyle.Secondary).setEmoji('🖼️'),
-        new ButtonBuilder().setCustomId('sched_btn_color').setLabel('Color').setStyle(ButtonStyle.Secondary).setEmoji('🎨'),
+        new ButtonBuilder().setCustomId('sched_btn_content').setLabel('Content/Embed').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
+        new ButtonBuilder().setCustomId('sched_btn_type').setLabel(session.messageType === 'embed' ? 'Switch to Normal' : 'Switch to Embed').setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
+        new ButtonBuilder().setCustomId('sched_btn_images').setLabel('Images').setStyle(ButtonStyle.Secondary).setEmoji('🖼️').setDisabled(session.messageType === 'normal'),
+        new ButtonBuilder().setCustomId('sched_btn_color').setLabel('Color').setStyle(ButtonStyle.Secondary).setEmoji('🎨').setDisabled(session.messageType === 'normal'),
         new ButtonBuilder().setCustomId('sched_btn_buttons').setLabel('Buttons').setStyle(ButtonStyle.Secondary).setEmoji('🔘')
     );
 
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('sched_btn_channels').setLabel('Set Channels').setStyle(ButtonStyle.Secondary).setEmoji('📍'),
         new ButtonBuilder().setCustomId('sched_btn_time').setLabel('Set Time').setStyle(ButtonStyle.Secondary).setEmoji('🗓️'),
-        new ButtonBuilder().setCustomId('sched_btn_recurrence').setLabel('Recurrence').setStyle(ButtonStyle.Secondary).setEmoji('🔁')
+        new ButtonBuilder().setCustomId('sched_btn_recurrence').setLabel('Recurrence').setStyle(ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('sched_btn_load_template').setLabel('Load Template').setStyle(ButtonStyle.Primary).setEmoji('📂')
     );
 
     const row3 = new ActionRowBuilder().addComponents(
@@ -245,12 +248,46 @@ async function handleScheduleInteraction(interaction) {
     // Modal Triggers
     if (customId === 'sched_btn_content') {
         const modal = new ModalBuilder().setCustomId('sched_modal_content').setTitle('Edit Content');
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('title').setLabel('Title').setStyle(TextInputStyle.Short).setValue(session.config.title || '').setRequired(false)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('description').setLabel('Description').setStyle(TextInputStyle.Paragraph).setValue(session.config.description || '').setRequired(false)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('footer').setLabel('Footer').setStyle(TextInputStyle.Short).setValue(session.config.footer || '').setRequired(false))
-        );
+
+        const contentInput = new TextInputBuilder().setCustomId('content').setLabel('Message Text (Mentions/Content)').setStyle(TextInputStyle.Paragraph).setValue(session.content || '').setRequired(false);
+        const titleInput = new TextInputBuilder().setCustomId('title').setLabel('Embed Title').setStyle(TextInputStyle.Short).setValue(session.config.title || '').setRequired(false);
+        const descInput = new TextInputBuilder().setCustomId('description').setLabel('Embed Description').setStyle(TextInputStyle.Paragraph).setValue(session.config.description || '').setRequired(false);
+        const footerInput = new TextInputBuilder().setCustomId('footer').setLabel('Embed Footer').setStyle(TextInputStyle.Short).setValue(session.config.footer || '').setRequired(false);
+
+        const rows = [new ActionRowBuilder().addComponents(contentInput)];
+
+        if (session.messageType === 'embed') {
+            rows.push(new ActionRowBuilder().addComponents(titleInput));
+            rows.push(new ActionRowBuilder().addComponents(descInput));
+            rows.push(new ActionRowBuilder().addComponents(footerInput));
+        }
+
+        modal.addComponents(...rows);
         await interaction.showModal(modal);
+    }
+    else if (customId === 'sched_btn_type') {
+        session.messageType = session.messageType === 'embed' ? 'normal' : 'embed';
+        await renderDashboard(interaction, sessionId);
+    }
+    else if (customId === 'sched_btn_load_template') {
+        // Fetch templates
+        const templates = db.getTemplates(interaction.guild.id);
+        if (templates.length === 0) return interaction.reply({ content: '❌ No templates found.', ephemeral: true });
+
+        const select = new StringSelectMenuBuilder()
+            .setCustomId('sched_select_load_template')
+            .setPlaceholder('Select a template to load')
+            .addOptions(templates.slice(0, 25).map(t => ({ // Check limit
+                label: t.name,
+                description: t.category,
+                value: t.id.toString()
+            })));
+
+        await interaction.reply({
+            content: 'Select a template to load. **Warning: This will overwrite current settings.**',
+            components: [new ActionRowBuilder().addComponents(select)],
+            ephemeral: true
+        });
     }
     else if (customId === 'sched_btn_images') {
         const modal = new ModalBuilder().setCustomId('sched_modal_images').setTitle('Edit Images');
@@ -393,18 +430,17 @@ async function handleScheduleInteraction(interaction) {
         // Save logic
         try {
             if (session.isEdit) {
-                // Update Existing
-                db.updateEmbedConfig(session.embedId, session.config);
+                // Update Scheduled Job
+                db.updateEmbedConfig(session.embedId, session.config, session.content, session.messageType);
                 db.deleteEmbedButtons(session.embedId);
                 if (session.buttons.length > 0) db.createButtons(session.embedId, session.buttons);
 
-                // Update Scheduled Job
                 db.updateScheduledJob(
                     session.jobId,
                     session.scheduledTime.toISOString(),
                     session.recurrence.length > 0 ? session.recurrence : null,
                     session.targetChannels,
-                    session.config.title // Use title as name for now, or null
+                    session.config.title || session.content.substring(0, 30) // Use title or start of content as name
                 );
 
                 // Re-schedule in memory
@@ -418,7 +454,9 @@ async function handleScheduleInteraction(interaction) {
                     config: session.config,
                     scheduledTime: session.scheduledTime.toISOString(),
                     recurrence: session.recurrence.length > 0 ? session.recurrence : null,
-                    name: session.config.title
+                    name: session.config.title || session.content.substring(0, 30),
+                    content: session.content,
+                    messageType: session.messageType
                 });
 
             } else {
@@ -433,7 +471,9 @@ async function handleScheduleInteraction(interaction) {
                     guildId: session.guildId,
                     config: session.config,
                     scheduledTime: session.scheduledTime.toISOString(),
-                    createdBy: interaction.user.id
+                    createdBy: interaction.user.id,
+                    content: session.content,
+                    messageType: session.messageType
                 });
 
                 if (session.buttons.length > 0) {
@@ -447,7 +487,9 @@ async function handleScheduleInteraction(interaction) {
                     config: session.config,
                     scheduledTime: session.scheduledTime.toISOString(),
                     recurrence: session.recurrence.length > 0 ? session.recurrence : null,
-                    name: session.config.title
+                    name: session.config.title || session.content.substring(0, 30),
+                    content: session.content,
+                    messageType: session.messageType
                 });
             }
 
@@ -471,9 +513,12 @@ async function handleScheduleModal(interaction) {
     if (!session) return interaction.reply({ content: 'Session expired', ephemeral: true });
 
     if (customId === 'sched_modal_content') {
-        session.config.title = interaction.fields.getTextInputValue('title');
-        session.config.description = interaction.fields.getTextInputValue('description');
-        session.config.footer = interaction.fields.getTextInputValue('footer');
+        session.content = interaction.fields.getTextInputValue('content');
+        if (session.messageType === 'embed') {
+            session.config.title = interaction.fields.getTextInputValue('title');
+            session.config.description = interaction.fields.getTextInputValue('description');
+            session.config.footer = interaction.fields.getTextInputValue('footer');
+        }
     }
     else if (customId === 'sched_modal_images') {
         session.config.thumbnail = interaction.fields.getTextInputValue('thumbnail');
@@ -495,11 +540,11 @@ async function handleScheduleModal(interaction) {
         const url = interaction.fields.getTextInputValue('url');
         const styleStr = interaction.fields.getTextInputValue('style').toUpperCase(); // validate later
 
-        let style = ButtonStyle.Primary;
-        if (url) style = ButtonStyle.Link;
-        else if (styleStr === 'SECONDARY') style = ButtonStyle.Secondary;
-        else if (styleStr === 'SUCCESS') style = ButtonStyle.Success;
-        else if (styleStr === 'DANGER') style = ButtonStyle.Danger;
+        let style = 'PRIMARY';
+        if (url) style = 'LINK';
+        else if (styleStr === 'SECONDARY') style = 'SECONDARY';
+        else if (styleStr === 'SUCCESS') style = 'SUCCESS';
+        else if (styleStr === 'DANGER') style = 'DANGER';
 
         session.buttons.push({
             label,
@@ -528,7 +573,11 @@ async function handleScheduleModal(interaction) {
                 name,
                 'Scheduled Messages',
                 session.config,
-                interaction.user.id
+                interaction.user.id,
+                session.content,
+                session.messageType,
+                session.recurrence,
+                session.targetChannels
             );
             if (session.buttons.length > 0) {
                 db.createTemplateButtons(templateId, session.buttons);
@@ -543,38 +592,6 @@ async function handleScheduleModal(interaction) {
 
     // Refresh Dashboard
     await renderDashboard(interaction, sessionId);
-} const dateStr = interaction.fields.getTextInputValue('date');
-// We preserve existing time if set
-const current = session.scheduledTime ? new Date(session.scheduledTime) : new Date();
-// Reset to date 00:00 then add time
-// Actually, easier to just parse date and keep time
-const d = new Date(dateStr);
-if (isNaN(d.getTime())) return interaction.reply({ content: 'Invalid Date', ephemeral: true });
-
-d.setHours(current.getHours(), current.getMinutes(), 0, 0);
-if (d <= new Date()) return interaction.reply({ content: 'Time must be in future', ephemeral: true });
-
-session.scheduledTime = d;
-await renderDashboard(interaction, sessionId);
-    }
-    else if (customId === 'sched_modal_template_name') {
-    const name = interaction.fields.getTextInputValue('name');
-    try {
-        // Save as template
-        const templateId = db.createTemplate(
-            session.guildId,
-            name,
-            'Scheduled Messages',
-            session.config,
-            interaction.user.id
-        );
-        if (session.buttons.length > 0) {
-            db.createTemplateButtons(templateId, session.buttons);
-        }
-        await interaction.reply({ content: `✅ Template **${name}** saved!`, ephemeral: true });
-    } catch (e) {
-        await interaction.reply({ content: `❌ Error saving template: ${e.message}`, ephemeral: true });
-    }
 }
 
 /**
@@ -585,6 +602,40 @@ async function handleScheduleSelect(interaction) {
     const sessionId = interaction.user.id;
     const session = scheduleSessions.get(sessionId);
     if (!session) return interaction.reply({ content: 'Session expired', ephemeral: true });
+
+    if (customId === 'sched_select_load_template') {
+        const templateId = interaction.values[0];
+        const template = db.getTemplateById(templateId);
+
+        if (!template) {
+            return interaction.update({ content: '❌ Template not found or deleted.', components: [] });
+        }
+
+        const buttons = db.getTemplateButtons(templateId);
+
+        // Update session
+        session.config = template.config;
+        session.content = template.content || '';
+        session.messageType = template.message_type || 'embed';
+        session.recurrence = template.recurrence || [];
+        session.targetChannels = template.target_channels || []; // Or keep current? Usually templates have channels if specific. 
+        // If template has no channels, keep current or clear? 
+        // Logic: Templates might be channel specific or generic. If generic (null target_channels), keep current.
+        if (template.target_channels && template.target_channels.length > 0) {
+            session.targetChannels = template.target_channels;
+        }
+
+        session.buttons = buttons.map(b => ({
+            label: b.label,
+            style: b.style,
+            url: b.url,
+            // row/pos handled by builder
+        }));
+
+        await interaction.update({ content: `✅ Template **${template.name}** loaded!`, components: [] });
+        await renderDashboard(interaction, sessionId); // Refresh main dashboard
+        return;
+    }
 
     if (customId === 'sched_select_channel') {
         session.channelId = interaction.values[0];

@@ -24,7 +24,12 @@ async function handleModalSubmit(interaction) {
     } else if (customId.startsWith('embed_images_')) {
         await handleImagesModal(interaction);
     } else if (customId.startsWith('embed_button_')) {
-        await handleButtonModal(interaction);
+        // Distinguish between add (embed_button_sessionId) and edit (embed_button_edit_sessionId)
+        if (customId.includes('_edit_')) {
+            await handleButtonEditModal(interaction);
+        } else {
+            await handleButtonModal(interaction);
+        }
     } else if (customId.startsWith('forum_post_')) {
         await handleForumPostModal(interaction);
     } else if (customId.startsWith('faq_add_')) {
@@ -267,6 +272,15 @@ async function handleButtonModal(interaction) {
 
     const label = interaction.fields.getTextInputValue('label');
     const url = interaction.fields.getTextInputValue('url');
+    const { isValidUrl } = require('../utils/buttonBuilder');
+
+    if (url && !isValidUrl(url)) {
+        return interaction.reply({
+            content: '❌ Invalid URL provided. Please enter a valid HTTP/HTTPS URL (e.g., `https://google.com`).',
+            ephemeral: true,
+        });
+    }
+
     const style = url ? 'LINK' : (session.pendingButtonStyle || 'PRIMARY');
 
     // Add button to session
@@ -283,6 +297,44 @@ async function handleButtonModal(interaction) {
     buildSessions.set(sessionId, session);
 
     // Show updated buttons step
+    await showButtonsStep(interaction, sessionId);
+}
+
+/**
+ * Handle button edit modal
+ */
+async function handleButtonEditModal(interaction) {
+    const sessionId = interaction.customId.split('_').pop();
+    const session = buildSessions.get(sessionId);
+
+    if (!session || session.editingButtonIndex === undefined) {
+        return interaction.reply({ content: 'Session expired or invalid state.', ephemeral: true });
+    }
+
+    const index = session.editingButtonIndex;
+    const label = interaction.fields.getTextInputValue('label');
+    const url = interaction.fields.getTextInputValue('url');
+    const { isValidUrl } = require('../utils/buttonBuilder');
+
+    if (url && !isValidUrl(url)) {
+        return interaction.reply({
+            content: '❌ Invalid URL provided. Please enter a valid HTTP/HTTPS URL (e.g., `https://google.com`).',
+            ephemeral: true,
+        });
+    }
+
+    const style = url ? 'LINK' : 'PRIMARY'; // Default reset to PRIMARY if URL removed
+
+    // Update button properties
+    session.buttons[index].label = label;
+    session.buttons[index].url = url || null;
+    session.buttons[index].style = style;
+    // Maintain row/position
+
+    // Clear editing state
+    delete session.editingButtonIndex;
+    buildSessions.set(sessionId, session);
+
     await showButtonsStep(interaction, sessionId);
 }
 
@@ -372,6 +424,21 @@ async function showButtonsStep(interaction, sessionId) {
     const buttonCount = session.buttons.length;
     const canAddMore = buttonCount < 25; // Max 25 buttons (5 rows × 5 buttons)
 
+    // Create select menu to edit/remove buttons if there are any
+    const selectRow = new ActionRowBuilder();
+    if (buttonCount > 0) {
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`embed_edit_button_select_${sessionId}`)
+            .setPlaceholder('✏️ Select a button to Edit or Remove')
+            .addOptions(session.buttons.map((btn, index) => ({
+                label: `${index + 1}. ${btn.label.substring(0, 50)}`,
+                description: btn.url ? `Link: ${btn.url.substring(0, 50)}` : `Style: ${btn.style}`,
+                value: index.toString(),
+                emoji: '🔘'
+            })));
+        selectRow.addComponents(selectMenu);
+    }
+
     const controlRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId(`embed_add_button_${sessionId}`)
@@ -386,13 +453,28 @@ async function showButtonsStep(interaction, sessionId) {
             .setEmoji('✅')
     );
 
-    const components = [...buttonComponents, controlRow].slice(0, 5);
+    const components = [...buttonComponents]; // Show buttons preview
+    if (buttonCount > 0) components.push(selectRow); // Add select menu
+    components.push(controlRow); // Add controls
+
+    // We can only show 5 rows max. Discord limits.
+    // If buttons take up 5 rows, we can't show controls.
+    // buttonComponents returns rows.
+    // We should limit preview if needed or rely on user knowing limits.
+    // Since we limit to 5 rows in buttonBuilder, we might go over limit if we add control rows.
+    // Safe bet: slice buttonComponents to 3 rows max for preview to allow 2 rows for controls.
+    const previewComponents = [...buttonComponents.slice(0, 3), ...components.slice(buttonComponents.length)];
+    // Actually simpler:
+    const finalComponents = [];
+    finalComponents.push(...buttonComponents.slice(0, 3)); // Max 3 rows of preview
+    if (buttonCount > 0) finalComponents.push(selectRow);
+    finalComponents.push(controlRow);
 
     const method = interaction.replied || interaction.deferred ? 'editReply' : 'reply';
     await interaction[method]({
-        content: `**Step 3: Add Buttons** (optional)\n\nCurrent buttons: ${buttonCount}`,
+        content: `**Step 3: Add Buttons** (optional)\n\nCurrent buttons: ${buttonCount}\n*Use the select menu below to Edit or Remove buttons.*`,
         embeds: [previewEmbed],
-        components,
+        components: finalComponents,
         ephemeral: true,
     });
 }
