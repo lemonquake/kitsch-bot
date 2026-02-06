@@ -31,6 +31,8 @@ async function handleButton(interaction) {
         await handleAddButton(interaction);
     } else if (customId.startsWith('embed_finish_')) {
         await handleFinish(interaction);
+    } else if (customId.startsWith('embed_save_template_')) {
+        await handleSaveTemplate(interaction);
     } else if (customId.startsWith('embed_post_now_')) {
         await handlePostNow(interaction);
     } else if (customId.startsWith('embed_schedule_')) {
@@ -165,15 +167,15 @@ async function handleFinish(interaction) {
             .setStyle(ButtonStyle.Success)
             .setEmoji('📤'),
         new ButtonBuilder()
+            .setCustomId(`embed_save_template_${sessionId}`)
+            .setLabel('Save as Template')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('💾'),
+        new ButtonBuilder()
             .setCustomId(`embed_schedule_${sessionId}`)
             .setLabel('Schedule')
-            .setStyle(ButtonStyle.Primary)
-            .setEmoji('📅'),
-        new ButtonBuilder()
-            .setCustomId(`embed_live_preview_${sessionId}`)
-            .setLabel('Live Preview')
             .setStyle(ButtonStyle.Secondary)
-            .setEmoji('👁️'),
+            .setEmoji('📅'),
         new ButtonBuilder()
             .setCustomId(`embed_cancel_${sessionId}`)
             .setLabel('Cancel')
@@ -377,11 +379,53 @@ async function handleLivePreview(interaction) {
     const buttonComponents = buildButtons(session.buttons);
 
     await interaction.reply({
-        content: '👁️ **Live Preview**\nThis is exactly how your embed will appear to everyone:',
+        content: '👁️ **Live Preview**\nThis is how your embed will appear:',
         embeds: [previewEmbed],
         components: buttonComponents,
         ephemeral: true,
     });
+}
+
+/**
+ * Handle save as template button - show modal to name the template
+ */
+async function handleSaveTemplate(interaction) {
+    const sessionId = interaction.customId.split('_').pop();
+    const session = buildSessions.get(sessionId);
+
+    if (!session) {
+        return interaction.reply({
+            content: '❌ Session expired. Please start again.',
+            ephemeral: true,
+        });
+    }
+
+    const modal = new ModalBuilder()
+        .setCustomId(`embed_template_save_${sessionId}`)
+        .setTitle('💾 Save as Template');
+
+    const nameInput = new TextInputBuilder()
+        .setCustomId('name')
+        .setLabel('Template Name')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('My Awesome Template')
+        .setMaxLength(50)
+        .setRequired(true);
+
+    const categoryInput = new TextInputBuilder()
+        .setCustomId('category')
+        .setLabel('Category (optional)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('General')
+        .setMaxLength(30)
+        .setRequired(false);
+
+    modal.addComponents(
+        new ActionRowBuilder().addComponents(nameInput),
+        new ActionRowBuilder().addComponents(categoryInput)
+    );
+
+    await interaction.showModal(modal);
 }
 
 /**

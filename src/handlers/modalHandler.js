@@ -34,6 +34,8 @@ async function handleModalSubmit(interaction) {
         await handleForumPostModal(interaction);
     } else if (customId.startsWith('faq_add_')) {
         await handleFAQAddModal(interaction);
+    } else if (customId.startsWith('embed_template_save_')) {
+        await handleEmbedTemplateSaveModal(interaction);
     } else if (customId.startsWith('template_save_')) {
         await handleTemplateSaveModal(interaction);
     } else if (customId.startsWith('sched_modal_')) {
@@ -74,6 +76,65 @@ async function handleTemplateSaveModal(interaction) {
         content: `✅ Template **${name}** saved in category **${category}**!`,
         ephemeral: true,
     });
+}
+
+/**
+ * Handle embed builder template save modal submission
+ * This saves the full embed config and buttons from the embed builder session
+ */
+async function handleEmbedTemplateSaveModal(interaction) {
+    const sessionId = interaction.customId.split('_').pop();
+    const session = buildSessions.get(sessionId);
+
+    if (!session) {
+        return interaction.reply({
+            content: '❌ Session expired. Please start again with `/embed create`.',
+            ephemeral: true,
+        });
+    }
+
+    const name = interaction.fields.getTextInputValue('name');
+    const category = interaction.fields.getTextInputValue('category') || 'General';
+
+    // Check if template name already exists
+    const existing = db.getTemplateByName(interaction.guild.id, name);
+    if (existing) {
+        return interaction.reply({
+            content: `❌ A template named **${name}** already exists. Please choose a different name.`,
+            ephemeral: true,
+        });
+    }
+
+    try {
+        // Create template with full config (includes images, author, footer, etc.)
+        const templateId = db.createTemplate(
+            interaction.guild.id,
+            name,
+            category,
+            session.config,
+            interaction.user.id,
+            null, // content (embed builder doesn't use this)
+            'embed', // messageType
+            null, // recurrence
+            null // targetChannels
+        );
+
+        // Save buttons
+        if (session.buttons && session.buttons.length > 0) {
+            db.createTemplateButtons(templateId, session.buttons);
+        }
+
+        await interaction.reply({
+            content: `✅ Template **${name}** saved with ${session.buttons?.length || 0} button(s)!\n\nUse \`/embed create template:${name}\` or \`/template use name:${name}\` to use it.`,
+            ephemeral: true,
+        });
+    } catch (error) {
+        console.error('Error saving template:', error);
+        await interaction.reply({
+            content: `❌ Failed to save template: ${error.message}`,
+            ephemeral: true,
+        });
+    }
 }
 
 module.exports = {
