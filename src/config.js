@@ -21,4 +21,7 @@ module.exports = {
 
     // Scheduling settings
     timezone: 'Asia/Manila', // Adjust to your timezone
+
+    // Slack Integration
+    slackWebhookUrl: process.env.SLACK_WEBHOOK_URL,
 };

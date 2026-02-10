@@ -41,6 +41,9 @@ async function handleModalSubmit(interaction) {
     } else if (customId.startsWith('sched_modal_')) {
         const { handleScheduleModal } = require('./scheduleHandler');
         await handleScheduleModal(interaction);
+    } else if (customId.startsWith('ticket_')) {
+        const { handleTicketInteraction } = require('./ticketHandler');
+        await handleTicketInteraction(interaction);
     }
 }
 

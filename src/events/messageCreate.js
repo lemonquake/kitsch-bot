@@ -11,6 +11,13 @@ module.exports = {
 
         // Check if this channel has a sticky embed
         const sticky = db.getStickyEmbedByChannel(message.channel.id);
+
+        // Check if this is a ticket channel and log the message
+        const ticket = db.getTicketByChannel(message.channel.id);
+        if (ticket) {
+            db.logTicketMessage(ticket.id, message);
+        }
+
         if (!sticky) return;
 
         try {

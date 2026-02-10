@@ -95,3 +95,67 @@ CREATE TABLE IF NOT EXISTS template_buttons (
   position INTEGER DEFAULT 0,
   FOREIGN KEY (template_id) REFERENCES embed_templates(id) ON DELETE CASCADE
 );
+
+-- Store server pulse configurations (Real-time status updates)
+CREATE TABLE IF NOT EXISTS server_pulses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL UNIQUE,
+  interval_minutes INTEGER DEFAULT 120,
+  last_message_id TEXT,
+  config TEXT, -- Optional styling overrides
+  last_run TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Hub Configuration (One central message with navigation)
+CREATE TABLE IF NOT EXISTS hubs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  message_id TEXT,
+  title TEXT DEFAULT 'Server Hub',
+  description TEXT,
+  image TEXT,
+  color TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Pages within a Hub
+CREATE TABLE IF NOT EXISTS hub_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hub_id INTEGER NOT NULL,
+  label TEXT NOT NULL,      -- Button Label (e.g. "Rules")
+  emoji TEXT,               -- Button Emoji
+  style TEXT DEFAULT 'SECONDARY', -- Button Style
+  type TEXT DEFAULT 'page', -- 'page' (static content) or 'ticket' (action)
+  content_embed TEXT,       -- JSON for the page content
+  ticket_category_id TEXT,  -- If type='ticket', the category to open it in
+  row_index INTEGER DEFAULT 0,
+  position INTEGER DEFAULT 0,
+  FOREIGN KEY (hub_id) REFERENCES hubs(id) ON DELETE CASCADE
+);
+
+-- Active Tickets
+CREATE TABLE IF NOT EXISTS tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  status TEXT DEFAULT 'open', -- open, closed
+  type TEXT, -- 'support', 'report', etc.
+  custom_id TEXT, -- User-defined ID (e.g. 'TICKET-123')
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Ticket Chat Logs
+CREATE TABLE IF NOT EXISTS ticket_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket_id INTEGER NOT NULL,
+  sender_id TEXT NOT NULL,
+  sender_name TEXT,
+  content TEXT,
+  attachment_url TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+);

@@ -2,6 +2,8 @@ const { Events, Collection } = require('discord.js');
 const { handleModalSubmit } = require('../handlers/modalHandler');
 const { handleSelectMenu } = require('../handlers/selectHandler');
 const { handleButton } = require('../handlers/buttonHandler');
+const { handleHubInteraction } = require('../utils/hubManager');
+const { handleTicketInteraction } = require('../handlers/ticketHandler');
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -62,7 +64,13 @@ module.exports = {
         // Handle button clicks
         else if (interaction.isButton()) {
             try {
-                await handleButton(interaction);
+                if (interaction.customId.startsWith('hub_page_')) {
+                    await handleHubInteraction(interaction);
+                } else if (interaction.customId.startsWith('ticket_')) {
+                    await handleTicketInteraction(interaction);
+                } else {
+                    await handleButton(interaction);
+                }
             } catch (error) {
                 console.error('Error handling button:', error);
 

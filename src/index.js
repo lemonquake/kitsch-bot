@@ -5,12 +5,17 @@ const path = require('node:path');
 const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
 const { initDatabase } = require('./database/db');
 const { initScheduler } = require('./utils/scheduler');
+const { initPulseService } = require('./utils/pulse');
+const { setClient } = require('./utils/hubManager');
 
 // Create Discord client with necessary intents
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildPresences,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.MessageContent,
     ],
     partials: [Partials.Channel, Partials.Message],
 });
@@ -64,6 +69,12 @@ async function init() {
 
         // Initialize scheduler after login
         await initScheduler(client);
+
+        // Initialize pulse service
+        await initPulseService(client);
+
+        // Pass client to hub manager
+        setClient(client);
 
     } catch (error) {
         console.error('❌ Failed to start bot:', error);

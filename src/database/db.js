@@ -97,6 +97,15 @@ function migrateDatabase() {
             db.run("ALTER TABLE embed_templates ADD COLUMN target_channels TEXT");
         }
 
+        // Check for new columns in tickets
+        const ticketsInfo = db.exec("PRAGMA table_info(tickets)")[0].values;
+        const ticketsColumns = ticketsInfo.map(c => c[1]);
+
+        if (!ticketsColumns.includes('custom_id')) {
+            console.log('Migrating: Adding custom_id column to tickets');
+            db.run("ALTER TABLE tickets ADD COLUMN custom_id TEXT");
+        }
+
     } catch (error) {
         console.error('Error migrating database:', error);
     }
@@ -581,7 +590,185 @@ module.exports = {
     getTemplateById,
     getTemplateButtons,
     deleteTemplate,
+    // Server Pulse operations
+    createServerPulse,
+    getServerPulses,
+    getPulseByChannel,
+    updatePulseMessageId,
+    updatePulseLastRun,
+    deletePulse,
+    // Hub operations
+    createHub,
+    getHubs,
+    getAllHubs,
+    getHubById,
+    updateHubMessageId,
+    deleteHub,
+    // Hub Page operations
+    createHubPage,
+    getHubPages,
+    deleteHubPage,
+    // Ticket operations
+    createTicket,
+    getTicketByChannel,
+    closeTicket,
+    updateTicketCustomId,
+    getTicketByIdOrCustomId,
+    // Ticket Chat Logs
+    logTicketMessage,
+    getTicketMessages,
+    getUserTickets,
+    getTicketById,
 };
+
+// ============================================
+// Ticket Chat Log Operations
+// ============================================
+
+/**
+ * Log a message sent in a ticket channel
+ */
+function logTicketMessage(ticketId, message) {
+    const stmt = db.prepare(`
+        INSERT INTO ticket_messages (ticket_id, sender_id, sender_name, content, attachment_url)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const attachmentUrl = message.attachments.first() ? message.attachments.first().url : null;
+
+    stmt.run([
+        ticketId,
+        message.author.id,
+        message.author.username,
+        message.content,
+        attachmentUrl
+    ]);
+    stmt.free();
+    // No saveDatabase() needed for high-frequency inserts if we rely on WAL or periodic saves, 
+    // but for now, let's save to be safe.
+    saveDatabase();
+}
+
+/**
+ * Get all messages for a ticket
+ */
+function getTicketMessages(ticketId) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM ticket_messages WHERE ticket_id = ? ORDER BY created_at ASC');
+    stmt.bind([ticketId]);
+
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Get all tickets for a user (open and closed)
+ */
+function getUserTickets(userId) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM tickets WHERE user_id = ? ORDER BY created_at DESC');
+    stmt.bind([userId]);
+
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Get a ticket by its ID
+ */
+function getTicketById(ticketId) {
+    const stmt = db.prepare('SELECT * FROM tickets WHERE id = ?');
+    stmt.bind([ticketId]);
+
+    let result = null;
+    if (stmt.step()) {
+        result = stmt.getAsObject();
+    }
+    stmt.free();
+    return result;
+}
+
+/**
+ * Create a new server pulse configuration
+ */
+function createServerPulse({ guildId, channelId, intervalMinutes, config }) {
+    const stmt = db.prepare(`
+        INSERT OR REPLACE INTO server_pulses (guild_id, channel_id, interval_minutes, config)
+        VALUES (?, ?, ?, ?)
+    `);
+    stmt.run([guildId, channelId, intervalMinutes || 120, config ? JSON.stringify(config) : null]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get all active server pulses
+ */
+function getServerPulses() {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM server_pulses WHERE is_active = 1');
+
+    while (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (row.config) row.config = JSON.parse(row.config);
+        results.push(row);
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Get pulse by channel ID
+ */
+function getPulseByChannel(channelId) {
+    const stmt = db.prepare('SELECT * FROM server_pulses WHERE channel_id = ?');
+    stmt.bind([channelId]);
+
+    let result = null;
+    if (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (row.config) row.config = JSON.parse(row.config);
+        result = row;
+    }
+    stmt.free();
+    return result;
+}
+
+/**
+ * Update the last message ID for a pulse
+ */
+function updatePulseMessageId(id, messageId) {
+    const stmt = db.prepare('UPDATE server_pulses SET last_message_id = ? WHERE id = ?');
+    stmt.run([messageId, id]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Update the last run timestamp for a pulse
+ */
+function updatePulseLastRun(id) {
+    const stmt = db.prepare("UPDATE server_pulses SET last_run = datetime('now') WHERE id = ?");
+    stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Delete a pulse configuration
+ */
+function deletePulse(channelId) {
+    const stmt = db.prepare('DELETE FROM server_pulses WHERE channel_id = ?');
+    stmt.run([channelId]);
+    stmt.free();
+    saveDatabase();
+}
 
 /**
  * Add a new FAQ entry
@@ -739,3 +926,182 @@ function getAllStickyEmbeds() {
     stmt.free();
     return results;
 }
+
+// ============================================
+// Hub Operations
+// ============================================
+
+function createHub({ guildId, channelId, title, description, image, color }) {
+    const stmt = db.prepare(`
+        INSERT INTO hubs (guild_id, channel_id, title, description, image, color)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run([guildId, channelId, title, description, image || null, color || null]);
+    stmt.free();
+
+    const result = db.exec('SELECT last_insert_rowid() as id');
+    const id = result[0].values[0][0];
+    saveDatabase();
+    return id;
+}
+
+function getHubs(guildId) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM hubs WHERE guild_id = ?');
+    stmt.bind([guildId]);
+    while (stmt.step()) results.push(stmt.getAsObject());
+    stmt.free();
+    return results;
+}
+
+function getAllHubs() {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM hubs');
+    while (stmt.step()) results.push(stmt.getAsObject());
+    stmt.free();
+    return results;
+}
+
+function getHubById(id) {
+    const stmt = db.prepare('SELECT * FROM hubs WHERE id = ?');
+    stmt.bind([id]);
+    let result = null;
+    if (stmt.step()) result = stmt.getAsObject();
+    stmt.free();
+    return result;
+}
+
+function updateHubMessageId(id, messageId) {
+    const stmt = db.prepare('UPDATE hubs SET message_id = ? WHERE id = ?');
+    stmt.run([messageId, id]);
+    stmt.free();
+    saveDatabase();
+}
+
+function deleteHub(id) {
+    const stmt = db.prepare('DELETE FROM hubs WHERE id = ?');
+    stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
+
+// ============================================
+// Hub Page Operations
+// ============================================
+
+function createHubPage({ hubId, label, emoji, style, type, contentEmbed, ticketCategoryId, rowIndex, position }) {
+    const stmt = db.prepare(`
+        INSERT INTO hub_pages (hub_id, label, emoji, style, type, content_embed, ticket_category_id, row_index, position)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run([
+        hubId, label, emoji || null, style || 'SECONDARY', type || 'page',
+        contentEmbed ? JSON.stringify(contentEmbed) : null,
+        ticketCategoryId || null, rowIndex || 0, position || 0
+    ]);
+    stmt.free();
+    saveDatabase();
+}
+
+function getHubPages(hubId) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM hub_pages WHERE hub_id = ? ORDER BY row_index, position');
+    stmt.bind([hubId]);
+    while (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (row.content_embed) row.content_embed = JSON.parse(row.content_embed);
+        results.push(row);
+    }
+    stmt.free();
+    return results;
+}
+
+function deleteHubPage(id) {
+    const stmt = db.prepare('DELETE FROM hub_pages WHERE id = ?');
+    stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
+
+// ============================================
+// Ticket Operations
+// ============================================
+
+function createTicket({ guildId, channelId, userId, type }) {
+    const stmt = db.prepare(`
+        INSERT INTO tickets (guild_id, channel_id, user_id, type)
+        VALUES (?, ?, ?, ?)
+    `);
+    stmt.run([guildId, channelId, userId, type || 'support']);
+    stmt.free();
+
+    const result = db.exec('SELECT last_insert_rowid() as id');
+    const id = result[0].values[0][0];
+
+    saveDatabase();
+    return id;
+}
+
+function getTicketByChannel(channelId) {
+    const stmt = db.prepare('SELECT * FROM tickets WHERE channel_id = ?');
+    stmt.bind([channelId]);
+    let result = null;
+    if (stmt.step()) result = stmt.getAsObject();
+    stmt.free();
+    return result;
+}
+
+function getTicketById(id) {
+    const stmt = db.prepare('SELECT * FROM tickets WHERE id = ?');
+    stmt.bind([id]);
+    let result = null;
+    if (stmt.step()) result = stmt.getAsObject();
+    stmt.free();
+    return result;
+}
+
+function closeTicket(channelId) {
+    const stmt = db.prepare("UPDATE tickets SET status = 'closed' WHERE channel_id = ?");
+    stmt.run([channelId]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Update ticket custom ID
+ */
+function updateTicketCustomId(ticketId, customId) {
+    const stmt = db.prepare("UPDATE tickets SET custom_id = ? WHERE id = ?");
+    stmt.run([customId, ticketId]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get ticket by ID or Custom ID
+ */
+function getTicketByIdOrCustomId(idOrRef) {
+    // Try by ID first if it looks like an integer
+    if (/^\d+$/.test(idOrRef)) {
+        const stmt = db.prepare('SELECT * FROM tickets WHERE id = ?');
+        stmt.bind([parseInt(idOrRef, 10)]);
+        if (stmt.step()) {
+            const result = stmt.getAsObject();
+            stmt.free();
+            return result;
+        }
+        stmt.free();
+    }
+
+    // Try by custom_id
+    const stmt = db.prepare('SELECT * FROM tickets WHERE lower(custom_id) = lower(?)');
+    stmt.bind([idOrRef]);
+
+    let result = null;
+    if (stmt.step()) {
+        result = stmt.getAsObject();
+    }
+    stmt.free();
+    return result;
+}
+
