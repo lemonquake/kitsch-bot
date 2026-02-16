@@ -181,6 +181,7 @@ async function handleCreate(interaction) {
     const descriptionValue = initialConfig.description || '';
     const authorValue = initialConfig.author || '';
     const footerValue = initialConfig.footer || '';
+    const contentValue = initialConfig.content || '';
 
     // Show content modal
     const modal = new ModalBuilder()
@@ -195,6 +196,15 @@ async function handleCreate(interaction) {
         .setMaxLength(256)
         .setRequired(false)
         .setValue(titleValue);
+
+    const contentInput = new TextInputBuilder()
+        .setCustomId('content')
+        .setLabel('Message Content (Mentions go here)')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Message text outside the embed (e.g. @everyone Announcement!)')
+        .setMaxLength(2000)
+        .setRequired(false)
+        .setValue(contentValue);
 
     const descriptionInput = new TextInputBuilder()
         .setCustomId('description')
@@ -225,6 +235,7 @@ async function handleCreate(interaction) {
 
     modal.addComponents(
         new ActionRowBuilder().addComponents(titleInput),
+        new ActionRowBuilder().addComponents(contentInput),
         new ActionRowBuilder().addComponents(descriptionInput),
         new ActionRowBuilder().addComponents(authorInput),
         new ActionRowBuilder().addComponents(footerInput)
@@ -265,6 +276,7 @@ async function handleEdit(interaction) {
         messageId: messageId,
         embedId: embedData.id,
         config: embedData.config,
+        content: embedData.content,
         buttons: db.getEmbedButtons(embedData.id).map(b => ({
             label: b.label,
             style: b.style,
@@ -290,6 +302,15 @@ async function handleEdit(interaction) {
         .setMaxLength(256)
         .setRequired(false)
         .setValue(embedData.config.title || '');
+
+    const contentInput = new TextInputBuilder()
+        .setCustomId('content')
+        .setLabel('Message Content')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Message text outside the embed...')
+        .setMaxLength(2000)
+        .setRequired(false)
+        .setValue(embedData.content || '');
 
     const descriptionInput = new TextInputBuilder()
         .setCustomId('description')
@@ -320,6 +341,7 @@ async function handleEdit(interaction) {
 
     modal.addComponents(
         new ActionRowBuilder().addComponents(titleInput),
+        new ActionRowBuilder().addComponents(contentInput),
         new ActionRowBuilder().addComponents(descriptionInput),
         new ActionRowBuilder().addComponents(authorInput),
         new ActionRowBuilder().addComponents(footerInput)

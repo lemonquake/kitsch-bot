@@ -202,12 +202,14 @@ async function handleContentModal(interaction) {
 
     // Extract values from modal
     const title = interaction.fields.getTextInputValue('title');
+    const content = interaction.fields.getTextInputValue('content');
     const description = interaction.fields.getTextInputValue('description');
     const author = interaction.fields.getTextInputValue('author');
     const footer = interaction.fields.getTextInputValue('footer');
 
     // Update session config
     if (title) session.config.title = title;
+    if (content) session.content = content; // Store message content separately
     if (description) session.config.description = description;
     if (author) session.config.author = author;
     if (footer) session.config.footer = footer;

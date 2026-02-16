@@ -24,6 +24,9 @@ async function handleSelectMenu(interaction) {
     } else if (customId.startsWith('embed_edit_button_select_')) {
         const { handleEditButtonSelect } = require('./buttonHandler');
         await handleEditButtonSelect(interaction);
+    } else if (customId.startsWith('embed_quick_mention_')) {
+        const { handleQuickMentionSelect } = require('./buttonHandler');
+        await handleQuickMentionSelect(interaction);
     }
 }
 

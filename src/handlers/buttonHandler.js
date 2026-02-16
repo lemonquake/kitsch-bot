@@ -3,6 +3,7 @@ const {
     TextInputBuilder,
     TextInputStyle,
     ActionRowBuilder,
+    StringSelectMenuBuilder,
     ButtonBuilder,
     ButtonStyle,
 } = require('discord.js');
@@ -160,6 +161,21 @@ async function handleFinish(interaction) {
     const previewEmbed = buildEmbed(session.config);
     const buttonComponents = buildButtons(session.buttons);
 
+    // Quick Mention Select Menu
+    const mentionSelect = new StringSelectMenuBuilder()
+        .setCustomId(`embed_quick_mention_${sessionId}`)
+        .setPlaceholder('🔔 Quick Mention (Optional)')
+        .addOptions([
+            { label: 'None', value: 'none', description: 'Clear mentions' },
+            { label: '@everyone', value: '@everyone', description: 'Notify everyone' },
+            { label: '@here', value: '@here', description: 'Notify online members' }
+        ]);
+
+    // Add role options if possible, but keep it simple for now or fetch roles?
+    // fetching roles might be too heavy for this sync flow. Keep it simple.
+
+    const selectRow = new ActionRowBuilder().addComponents(mentionSelect);
+
     const controlRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId(`embed_post_now_${sessionId}`)
@@ -183,10 +199,12 @@ async function handleFinish(interaction) {
             .setEmoji('❌')
     );
 
-    const components = [...buttonComponents.slice(0, 4), controlRow];
+    const components = [...buttonComponents.slice(0, 3), selectRow, controlRow];
+
+    const contentPreview = session.content ? `**Message Content:**\n${session.content}\n\n` : '';
 
     await interaction.update({
-        content: `**Ready to Post!**\n\n📍 Channel: <#${session.channelId}>`,
+        content: `${contentPreview}**Ready to Post!**\n\n📍 Channel: <#${session.channelId}>`,
         embeds: [previewEmbed],
         components,
     });
@@ -200,7 +218,7 @@ async function saveEditChanges(interaction, session, sessionId) {
 
     try {
         // Update embed config in database
-        db.updateEmbedConfig(session.embedId, session.config);
+        db.updateEmbedConfig(session.embedId, session.config, session.content);
 
         // Update buttons
         db.deleteEmbedButtons(session.embedId);
@@ -215,10 +233,16 @@ async function saveEditChanges(interaction, session, sessionId) {
         const updatedEmbed = buildEmbed(session.config);
         const buttonComponents = buildButtons(session.buttons);
 
-        await message.edit({
+        const payload = {
             embeds: [updatedEmbed],
             components: buttonComponents,
-        });
+        };
+
+        if (session.content !== undefined) {
+            payload.content = session.content;
+        }
+
+        await message.edit(payload);
 
         // Cleanup
         buildSessions.delete(sessionId);
@@ -263,16 +287,23 @@ async function handlePostNow(interaction) {
         const components = buildButtons(session.buttons);
 
         // Send the message
-        const message = await channel.send({
+        const payload = {
             embeds: [embed],
             components,
-        });
+        };
+
+        if (session.content) {
+            payload.content = session.content;
+        }
+
+        const message = await channel.send(payload);
 
         // Save to database
         const embedId = db.createEmbed({
             channelId: session.channelId,
             guildId: session.guildId,
             config: session.config,
+            content: session.content,
             createdBy: interaction.user.id,
         });
 
@@ -494,9 +525,33 @@ async function handleFAQBackToQuestions(interaction) {
     });
 }
 
+/**
+ * Handle Quick Mention selection
+ */
+async function handleQuickMentionSelect(interaction) {
+    const sessionId = interaction.customId.split('_').pop();
+    const session = buildSessions.get(sessionId);
+
+    if (!session) return interaction.reply({ content: 'Session expired', ephemeral: true });
+
+    const selection = interaction.values[0];
+
+    if (selection === 'none') {
+        session.content = '';
+    } else {
+        session.content = `${selection} ${session.content || ''}`.trim();
+    }
+
+    buildSessions.set(sessionId, session);
+
+    // Refresh the view
+    await handleFinish(interaction);
+}
+
 module.exports = {
     handleButton,
     handleEditButtonSelect,
+    handleQuickMentionSelect,
 };
 
 /**
