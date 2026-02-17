@@ -8,8 +8,8 @@ const { handleTicketInteraction } = require('../handlers/ticketHandler');
 module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction) {
-        // Handle slash commands
-        if (interaction.isChatInputCommand()) {
+        // Handle slash commands and context menu commands
+        if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
 
             if (!command) {
