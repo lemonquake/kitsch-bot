@@ -97,7 +97,14 @@ process.on('SIGTERM', () => {
 
 // Handle unhandled rejections
 process.on('unhandledRejection', error => {
-    console.error('Unhandled promise rejection:', error);
+    console.error('❌ Unhandled promise rejection:', error);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', error => {
+    console.error('❌ Uncaught exception:', error);
+    // Depending on the severity, we might want to shut down gracefully
+    // For now, we'll log it and let the bot attempt to continue or rely on a process manager to restart
 });
 
 // Start the bot

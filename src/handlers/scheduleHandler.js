@@ -307,7 +307,10 @@ async function handleScheduleInteraction(interaction) {
         const minuteSelect = new StringSelectMenuBuilder()
             .setCustomId('sched_select_minute')
             .setPlaceholder('Select Minute')
-            .addOptions(['00', '15', '30', '45'].map(m => ({ label: m, value: m })));
+            .addOptions(Array.from({ length: 12 }, (_, i) => {
+                const m = (i * 5).toString().padStart(2, '0');
+                return { label: m, value: m };
+            }));
 
         const dateRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('sched_btn_set_date').setLabel('Set Date (Today if empty)').setStyle(ButtonStyle.Secondary).setEmoji('📅')
