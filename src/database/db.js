@@ -106,6 +106,19 @@ function migrateDatabase() {
             db.run("ALTER TABLE tickets ADD COLUMN custom_id TEXT");
         }
 
+        // Check for new columns in hubs
+        const hubsInfo = db.exec("PRAGMA table_info(hubs)")[0].values;
+        const hubsColumns = hubsInfo.map(c => c[1]);
+
+        if (!hubsColumns.includes('thumbnail')) {
+            console.log('Migrating: Adding thumbnail column to hubs');
+            db.run("ALTER TABLE hubs ADD COLUMN thumbnail TEXT");
+        }
+        if (!hubsColumns.includes('footer')) {
+            console.log('Migrating: Adding footer column to hubs');
+            db.run("ALTER TABLE hubs ADD COLUMN footer TEXT");
+        }
+
     } catch (error) {
         console.error('Error migrating database:', error);
     }
@@ -603,10 +616,13 @@ module.exports = {
     getAllHubs,
     getHubById,
     updateHubMessageId,
+    updateHub,
     deleteHub,
     // Hub Page operations
     createHubPage,
     getHubPages,
+    getHubPageById,
+    updateHubPage,
     deleteHubPage,
     // Ticket operations
     createTicket,
@@ -981,6 +997,48 @@ function updateHubMessageId(id, messageId) {
 function deleteHub(id) {
     const stmt = db.prepare('DELETE FROM hubs WHERE id = ?');
     stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
+
+function updateHub({ id, title, description, image, color, thumbnail, footer }) {
+    const stmt = db.prepare(`
+        UPDATE hubs
+        SET title = ?, description = ?, image = ?, color = ?, thumbnail = ?, footer = ?
+        WHERE id = ?
+    `);
+    stmt.run([title || null, description || null, image || null, color || null, thumbnail || null, footer || null, id]);
+    stmt.free();
+    saveDatabase();
+}
+
+function getHubPageById(id) {
+    const stmt = db.prepare('SELECT * FROM hub_pages WHERE id = ?');
+    stmt.bind([id]);
+    let result = null;
+    if (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (row.content_embed) row.content_embed = JSON.parse(row.content_embed);
+        result = row;
+    }
+    stmt.free();
+    return result;
+}
+
+function updateHubPage({ id, label, emoji, style, contentEmbed, ticketCategoryId }) {
+    const stmt = db.prepare(`
+        UPDATE hub_pages
+        SET label = ?, emoji = ?, style = ?, content_embed = ?, ticket_category_id = ?
+        WHERE id = ?
+    `);
+    stmt.run([
+        label,
+        emoji || null,
+        style || 'SECONDARY',
+        contentEmbed ? JSON.stringify(contentEmbed) : null,
+        ticketCategoryId || null,
+        id
+    ]);
     stmt.free();
     saveDatabase();
 }

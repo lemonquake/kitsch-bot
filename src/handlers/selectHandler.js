@@ -27,6 +27,9 @@ async function handleSelectMenu(interaction) {
     } else if (customId.startsWith('embed_quick_mention_')) {
         const { handleQuickMentionSelect } = require('./buttonHandler');
         await handleQuickMentionSelect(interaction);
+    } else if (customId.startsWith('hub_select_')) {
+        const { handleHubEditorSelect } = require('../utils/hubEditor');
+        await handleHubEditorSelect(interaction);
     }
 }
 

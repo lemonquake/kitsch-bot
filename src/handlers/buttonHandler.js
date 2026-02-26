@@ -54,6 +54,9 @@ async function handleButton(interaction) {
         await handleScheduleInteraction(interaction);
     } else if (customId.startsWith('embed_edit_action_')) {
         await handleEditButtonAction(interaction);
+    } else if (customId.startsWith('hub_edit_')) {
+        const { handleHubEditorButton } = require('../utils/hubEditor');
+        await handleHubEditorButton(interaction);
     }
 }
 

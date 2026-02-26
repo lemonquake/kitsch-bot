@@ -44,6 +44,9 @@ async function handleModalSubmit(interaction) {
     } else if (customId.startsWith('ticket_')) {
         const { handleTicketInteraction } = require('./ticketHandler');
         await handleTicketInteraction(interaction);
+    } else if (customId.startsWith('hub_modal_')) {
+        const { handleHubEditorModal } = require('../utils/hubEditor');
+        await handleHubEditorModal(interaction);
     }
 }
 

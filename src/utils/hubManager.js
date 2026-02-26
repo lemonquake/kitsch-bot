@@ -19,9 +19,9 @@ function buildHubEmbed(hub) {
         .setDescription(hub.description || 'Welcome to the Server Hub. Select an option below.')
         .setColor(hub.color || '#2F3136');
 
-    if (hub.image) {
-        embed.setImage(hub.image);
-    }
+    if (hub.image) embed.setImage(hub.image);
+    if (hub.thumbnail) embed.setThumbnail(hub.thumbnail);
+    if (hub.footer) embed.setFooter({ text: hub.footer });
 
     return embed;
 }
