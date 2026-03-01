@@ -12,6 +12,7 @@ const { buildEmbed } = require('../utils/embedBuilder');
 const { buildButtons } = require('../utils/buttonBuilder');
 const { showButtonsStep, showImagesStep } = require('./modalHandler');
 const { createScheduledPost, getRelativeTime } = require('../utils/scheduler');
+const { handleHubButtonInteraction, handleHubEditButton } = require('../utils/hubManager');
 const db = require('../database/db');
 
 /**
@@ -21,8 +22,13 @@ const db = require('../database/db');
 async function handleButton(interaction) {
     const customId = interaction.customId;
 
-    // Embed builder flow buttons
-    if (customId.startsWith('embed_skip_color_')) {
+    // Hub control panel buttons
+    if (customId.startsWith('hub_ctrl_')) {
+        await handleHubButtonInteraction(interaction);
+    } else if (customId.startsWith('hub_editbtn_')) {
+        await handleHubEditButton(interaction);
+        // Embed builder flow buttons
+    } else if (customId.startsWith('embed_skip_color_')) {
         await handleSkipColor(interaction);
     } else if (customId.startsWith('embed_add_images_')) {
         await handleAddImages(interaction);

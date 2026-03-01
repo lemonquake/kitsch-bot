@@ -66,6 +66,8 @@ module.exports = {
             try {
                 if (interaction.customId.startsWith('hub_page_')) {
                     await handleHubInteraction(interaction);
+                } else if (interaction.customId.startsWith('hub_editbtn_') || interaction.customId.startsWith('hub_ctrl_')) {
+                    await handleButton(interaction);
                 } else if (interaction.customId.startsWith('ticket_')) {
                     await handleTicketInteraction(interaction);
                 } else {
