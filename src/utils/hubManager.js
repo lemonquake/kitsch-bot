@@ -675,25 +675,6 @@ async function handleHubInteraction(interaction) {
     }
 }
 
-/**
- * Handle the Edit Hub button click (hub_editbtn_<hubId>) on the posted message
- */
-async function handleHubEditButton(interaction) {
-    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-        return interaction.reply({
-            content: '❌ You need **Administrator** permissions to edit this Hub.',
-            ephemeral: true
-        });
-    }
-
-    const hubId = interaction.customId.replace('hub_editbtn_', '');
-    const hub = db.getHubById(hubId);
-    if (!hub) return interaction.reply({ content: '❌ Hub not found.', ephemeral: true });
-
-    const panel = buildHubControlPanel(hub);
-    await interaction.reply({ ...panel, ephemeral: true });
-}
-
 // ============================================================
 // Ticket Creation
 // ============================================================
@@ -793,6 +774,5 @@ module.exports = {
     handleHubButtonInteraction,
     handleHubPageSelect,
     handleHubModalSubmit,
-    handleHubEditButton,
     setClient
 };
