@@ -69,6 +69,8 @@ module.exports = {
                     await handlePanelButton(interaction);
                 } else if (interaction.customId.startsWith('hub_page_')) {
                     await handleHubInteraction(interaction);
+                } else if (interaction.customId.startsWith('hub_ctrl_')) {
+                    await handleButton(interaction);
                 } else if (interaction.customId.startsWith('ticket_')) {
                     await handleTicketInteraction(interaction);
                 } else {

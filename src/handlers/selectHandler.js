@@ -2,6 +2,7 @@ const { buildSessions } = require('../commands/embed');
 const { showButtonsStep } = require('./modalHandler');
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../database/db');
+const { handleHubPageSelect } = require('../utils/hubManager');
 
 /**
  * Handle select menu interactions
@@ -10,7 +11,9 @@ const db = require('../database/db');
 async function handleSelectMenu(interaction) {
     const customId = interaction.customId;
 
-    if (customId.startsWith('embed_color_select_')) {
+    if (customId.startsWith('hub_ctrl_pageselect_')) {
+        await handleHubPageSelect(interaction);
+    } else if (customId.startsWith('embed_color_select_')) {
         await handleColorSelect(interaction);
     } else if (customId.startsWith('embed_button_style_')) {
         await handleButtonStyleSelect(interaction);

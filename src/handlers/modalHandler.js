@@ -11,6 +11,7 @@ const { buildEmbed } = require('../utils/embedBuilder');
 const { buildButtons } = require('../utils/buttonBuilder');
 const db = require('../database/db');
 const { buildSessions } = require('../commands/embed');
+const { handleHubModalSubmit } = require('../utils/hubManager');
 
 /**
  * Handle modal submissions
@@ -19,7 +20,10 @@ const { buildSessions } = require('../commands/embed');
 async function handleModalSubmit(interaction) {
     const customId = interaction.customId;
 
-    if (customId.startsWith('embed_content_')) {
+    // Hub modal submissions
+    if (customId.startsWith('hub_modal_')) {
+        await handleHubModalSubmit(interaction);
+    } else if (customId.startsWith('embed_content_')) {
         await handleContentModal(interaction);
     } else if (customId.startsWith('embed_images_')) {
         await handleImagesModal(interaction);

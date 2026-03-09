@@ -628,6 +628,7 @@ module.exports = {
     getHubs,
     getAllHubs,
     getHubById,
+    updateHub,
     updateHubMessageId,
     updateHub,
     deleteHub,
@@ -1088,6 +1089,17 @@ function updateHubMessageId(id, messageId) {
     saveDatabase();
 }
 
+function updateHub({ id, title, description, image, color }) {
+    const stmt = db.prepare(`
+        UPDATE hubs
+        SET title = ?, description = ?, image = ?, color = ?
+        WHERE id = ?
+    `);
+    stmt.run([title, description, image || null, color || null, id]);
+    stmt.free();
+    saveDatabase();
+}
+
 function deleteHub(id) {
     const stmt = db.prepare('DELETE FROM hubs WHERE id = ?');
     stmt.run([id]);
@@ -1166,6 +1178,37 @@ function getHubPages(hubId) {
     }
     stmt.free();
     return results;
+}
+
+function getHubPageById(id) {
+    const stmt = db.prepare('SELECT * FROM hub_pages WHERE id = ?');
+    stmt.bind([id]);
+    let result = null;
+    if (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (row.content_embed) row.content_embed = JSON.parse(row.content_embed);
+        result = row;
+    }
+    stmt.free();
+    return result;
+}
+
+function updateHubPage({ id, label, emoji, style, contentEmbed, ticketCategoryId }) {
+    const stmt = db.prepare(`
+        UPDATE hub_pages
+        SET label = ?, emoji = ?, style = ?, content_embed = ?, ticket_category_id = ?
+        WHERE id = ?
+    `);
+    stmt.run([
+        label,
+        emoji || null,
+        style || 'SECONDARY',
+        contentEmbed ? JSON.stringify(contentEmbed) : null,
+        ticketCategoryId || null,
+        id
+    ]);
+    stmt.free();
+    saveDatabase();
 }
 
 function deleteHubPage(id) {
