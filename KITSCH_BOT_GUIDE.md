@@ -165,5 +165,31 @@ When creating a new embed with `/embed create`, you can select the `template` op
 
 ---
 
+## 🔗 Webhooks
+
+Post messages under a **custom name and avatar** — even from the embed builder!
+
+> [!NOTE]
+> Webhooks require the **Manage Webhooks** permission to create and manage.
+
+### Commands:
+| Command | Description |
+| :--- | :--- |
+| `/webhook create channel:#ch name:…` | Create a new webhook in a channel (optional avatar URL). |
+| `/webhook list` | View all saved webhooks with their IDs and channels. |
+| `/webhook delete id:…` | Permanently revoke and remove a webhook. |
+| `/webhook post id:…` | Compose and send a message/embed via a webhook instantly. |
+
+### Using Webhooks with the Embed Builder:
+When you finish building an embed (Step 4 → **Continue**), a **Post as Webhook 🔗** button will appear alongside **Post Now**:
+1. Click **Post as Webhook** — a picker appears with all saved webhooks.
+2. Select the webhook you want to use.
+3. Click **Post** to confirm. The embed is sent under the webhook's name and avatar.
+
+> [!TIP]
+> The `/webhook post` command also lets you send one-off messages as an embed (with title + color) or as plain text, with an optional name and avatar override per message.
+
+---
+
 > [!NOTE]
 > Need more help? Feel free to reach out to the staff or check the developer docs!

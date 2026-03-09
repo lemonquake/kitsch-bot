@@ -159,3 +159,28 @@ CREATE TABLE IF NOT EXISTS ticket_messages (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
 );
+
+-- Saved Webhooks
+CREATE TABLE IF NOT EXISTS webhooks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  webhook_id TEXT NOT NULL,
+  webhook_token TEXT NOT NULL,
+  avatar_url TEXT,
+  created_by TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhooks_guild_id ON webhooks(guild_id);
+
+-- Sticky Mod Panels (one per channel)
+CREATE TABLE IF NOT EXISTS sticky_panels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id TEXT NOT NULL UNIQUE,
+  guild_id TEXT NOT NULL,
+  last_message_id TEXT,
+  created_by TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);

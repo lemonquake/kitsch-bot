@@ -47,6 +47,9 @@ async function handleModalSubmit(interaction) {
     } else if (customId.startsWith('hub_modal_')) {
         const { handleHubEditorModal } = require('../utils/hubEditor');
         await handleHubEditorModal(interaction);
+    } else if (customId.startsWith('webhook_compose_')) {
+        const { handleWebhookComposeModal } = require('../commands/webhook');
+        await handleWebhookComposeModal(interaction);
     }
 }
 

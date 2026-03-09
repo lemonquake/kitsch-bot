@@ -119,6 +119,19 @@ function migrateDatabase() {
             db.run("ALTER TABLE hubs ADD COLUMN footer TEXT");
         }
 
+        // Ensure webhooks table exists (schema.sql handles it via CREATE TABLE IF NOT EXISTS)
+        // No column migrations needed for initial release
+
+        // Ensure sticky_panels table exists
+        db.run(`CREATE TABLE IF NOT EXISTS sticky_panels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_id TEXT NOT NULL UNIQUE,
+            guild_id TEXT NOT NULL,
+            last_message_id TEXT,
+            created_by TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )`);
+
     } catch (error) {
         console.error('Error migrating database:', error);
     }
@@ -635,7 +648,88 @@ module.exports = {
     getTicketMessages,
     getUserTickets,
     getTicketById,
+    // Webhook operations
+    createWebhook,
+    getWebhooks,
+    getWebhookById,
+    getWebhookByChannel,
+    deleteWebhook,
+    // Sticky Panel operations
+    createStickyPanel,
+    getStickyPanelByChannel,
+    updateStickyPanelMessageId,
+    removeStickyPanel,
+    getAllStickyPanels,
 };
+
+// ============================================
+// Webhook CRUD Operations
+// ============================================
+
+/**
+ * Save a webhook to the database
+ */
+function createWebhook({ guildId, channelId, name, webhookId, webhookToken, avatarUrl, createdBy }) {
+    const stmt = db.prepare(`
+        INSERT INTO webhooks (guild_id, channel_id, name, webhook_id, webhook_token, avatar_url, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run([guildId, channelId, name, webhookId, webhookToken, avatarUrl || null, createdBy]);
+    stmt.free();
+
+    const result = db.exec('SELECT last_insert_rowid() as id');
+    const id = result[0].values[0][0];
+    saveDatabase();
+    return id;
+}
+
+/**
+ * Get all saved webhooks for a guild
+ */
+function getWebhooks(guildId) {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM webhooks WHERE guild_id = ? ORDER BY created_at DESC');
+    stmt.bind([guildId]);
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}
+
+/**
+ * Get a saved webhook by its DB ID
+ */
+function getWebhookById(id) {
+    const stmt = db.prepare('SELECT * FROM webhooks WHERE id = ?');
+    stmt.bind([id]);
+    let result = null;
+    if (stmt.step()) result = stmt.getAsObject();
+    stmt.free();
+    return result;
+}
+
+/**
+ * Get the first saved webhook for a channel
+ */
+function getWebhookByChannel(channelId) {
+    const stmt = db.prepare('SELECT * FROM webhooks WHERE channel_id = ? LIMIT 1');
+    stmt.bind([channelId]);
+    let result = null;
+    if (stmt.step()) result = stmt.getAsObject();
+    stmt.free();
+    return result;
+}
+
+/**
+ * Delete a saved webhook record by DB ID
+ */
+function deleteWebhook(id) {
+    const stmt = db.prepare('DELETE FROM webhooks WHERE id = ?');
+    stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
 
 // ============================================
 // Ticket Chat Log Operations
@@ -1163,3 +1257,68 @@ function getTicketByIdOrCustomId(idOrRef) {
     return result;
 }
 
+// ============================================
+// Sticky Panel Operations
+// ============================================
+
+/**
+ * Create or replace a sticky panel for a channel
+ */
+function createStickyPanel({ channelId, guildId, createdBy }) {
+    const stmt = db.prepare(`
+        INSERT OR REPLACE INTO sticky_panels (channel_id, guild_id, created_by)
+        VALUES (?, ?, ?)
+    `);
+    stmt.run([channelId, guildId, createdBy]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get sticky panel for a channel
+ */
+function getStickyPanelByChannel(channelId) {
+    const stmt = db.prepare('SELECT * FROM sticky_panels WHERE channel_id = ?');
+    stmt.bind([channelId]);
+
+    let result = null;
+    if (stmt.step()) {
+        result = stmt.getAsObject();
+    }
+    stmt.free();
+    return result;
+}
+
+/**
+ * Update the last message ID for a sticky panel
+ */
+function updateStickyPanelMessageId(channelId, messageId) {
+    const stmt = db.prepare('UPDATE sticky_panels SET last_message_id = ? WHERE channel_id = ?');
+    stmt.run([messageId, channelId]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Remove sticky panel from a channel
+ */
+function removeStickyPanel(channelId) {
+    const stmt = db.prepare('DELETE FROM sticky_panels WHERE channel_id = ?');
+    stmt.run([channelId]);
+    stmt.free();
+    saveDatabase();
+}
+
+/**
+ * Get all active sticky panels
+ */
+function getAllStickyPanels() {
+    const results = [];
+    const stmt = db.prepare('SELECT * FROM sticky_panels');
+
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}

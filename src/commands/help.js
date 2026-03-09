@@ -1,51 +1,48 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const config = require('../config');
+const { SlashCommandBuilder } = require('discord.js');
+const { getHelpOverview } = require('../handlers/helpHandler');
+const { checkPermissions } = require('../middleware/permissions');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('help')
-        .setDescription('Show Kitsch Bot commands and information'),
+        .setDescription('Show Kitsch Bot comprehensive guide and commands')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('view')
+                .setDescription('View the guide for yourself (ephemeral)')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('deploy')
+                .setDescription('Post the interactive guide publicly to the current channel')
+        ),
 
     async execute(interaction) {
-        const embed = new EmbedBuilder()
-            .setTitle('✨ Kitsch Bot Help')
-            .setDescription('A high-end embed builder and scheduler for Discord.')
-            .setColor(config.colors.kitsch)
-            .addFields(
-                {
-                    name: '📝 Create Embed',
-                    value: '`/embed create #channel` - Create a new customizable embed',
-                    inline: false,
-                },
-                {
-                    name: '✏️ Edit Embed',
-                    value: '`/embed edit <message_id>` - Edit an existing embed by its message ID',
-                    inline: false,
-                },
-                {
-                    name: '📋 List Embeds',
-                    value: '`/embed list` - View all embeds created in this server',
-                    inline: false,
-                },
-                {
-                    name: '📑 Templates',
-                    value: '`/template save` - Save your own reusable templates\n`/template use` - Post a saved template\n`/template list` - Manage your templates',
-                    inline: false,
-                },
-                {
-                    name: '🔐 Required Roles',
-                    value: config.allowedRoles.map(r => `• ${r}`).join('\n'),
-                    inline: true,
-                },
-                {
-                    name: '🎨 Features',
-                    value: '• Custom colors\n• Images & thumbnails\n• Interactive buttons\n• Scheduled posts',
-                    inline: true,
-                }
-            )
-            .setFooter({ text: 'Kitsch Bot • Made with 💖' })
-            .setTimestamp();
+        const subcommand = interaction.options.getSubcommand(false) || 'view';
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        if (subcommand === 'deploy') {
+            // Permission check for deployment
+            const { allowed, message } = checkPermissions(interaction);
+            if (!allowed) {
+                return interaction.reply({ content: message, ephemeral: true });
+            }
+
+            const overview = getHelpOverview();
+            // Deploy publicly
+            await interaction.reply({
+                content: '✨ **Bot Guide Deployed**',
+                embeds: overview.embeds,
+                components: overview.components,
+                ephemeral: false
+            });
+        } else {
+            // Default: View ephemeral
+            const overview = getHelpOverview();
+            await interaction.reply({
+                embeds: overview.embeds,
+                components: overview.components,
+                ephemeral: true
+            });
+        }
     },
 };

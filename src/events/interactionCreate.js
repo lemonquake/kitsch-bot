@@ -64,7 +64,10 @@ module.exports = {
         // Handle button clicks
         else if (interaction.isButton()) {
             try {
-                if (interaction.customId.startsWith('hub_page_')) {
+                if (interaction.customId.startsWith('panel_')) {
+                    const { handlePanelButton } = require('../handlers/buttonHandler');
+                    await handlePanelButton(interaction);
+                } else if (interaction.customId.startsWith('hub_page_')) {
                     await handleHubInteraction(interaction);
                 } else if (interaction.customId.startsWith('ticket_')) {
                     await handleTicketInteraction(interaction);

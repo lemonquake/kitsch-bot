@@ -18,6 +18,9 @@ async function handleSelectMenu(interaction) {
         await handleFAQCategorySelect(interaction);
     } else if (customId === 'faq_question_select') {
         await handleFAQQuestionSelect(interaction);
+    } else if (customId.startsWith('panel_')) {
+        const { handlePanelSelect } = require('./buttonHandler');
+        await handlePanelSelect(interaction);
     } else if (customId.startsWith('sched_select_')) {
         const { handleScheduleSelect } = require('./scheduleHandler');
         await handleScheduleSelect(interaction);
@@ -30,6 +33,11 @@ async function handleSelectMenu(interaction) {
     } else if (customId.startsWith('hub_select_')) {
         const { handleHubEditorSelect } = require('../utils/hubEditor');
         await handleHubEditorSelect(interaction);
+    } else if (customId.startsWith('embed_webhook_select_')) {
+        await handleWebhookSelect(interaction);
+    } else if (customId === 'help_category_select') {
+        const { handleHelpSelect } = require('./helpHandler');
+        await handleHelpSelect(interaction);
     }
 }
 
@@ -145,6 +153,46 @@ async function handleFAQQuestionSelect(interaction) {
     await interaction.update({
         embeds: [embed],
         components: [backRow]
+    });
+}
+
+/**
+ * Handle webhook selection from the embed builder picker.
+ * Shows a confirm button to post the embed via the selected webhook.
+ */
+async function handleWebhookSelect(interaction) {
+    const customId = interaction.customId;
+    const sessionId = customId.split('_').pop();
+    const session = buildSessions.get(sessionId);
+
+    if (!session) {
+        return interaction.update({ content: '❌ Session expired.', components: [] });
+    }
+
+    const webhookDbId = interaction.values[0];
+    const wh = db.getWebhookById(parseInt(webhookDbId));
+    if (!wh) {
+        return interaction.update({ content: '❌ Webhook no longer exists.', components: [] });
+    }
+
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+    const confirmRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`embed_webhook_confirm_${webhookDbId}_${sessionId}`)
+            .setLabel(`Post as "${wh.name}"`)
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('📤'),
+        new ButtonBuilder()
+            .setCustomId(`embed_webhook_pick_${sessionId}`)
+            .setLabel('Pick Different Webhook')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('🔄'),
+    );
+
+    await interaction.update({
+        content: `🔗 **Ready to post as "${wh.name}"** in <#${wh.channel_id}>.\n\nClick **Post** to confirm.`,
+        components: [confirmRow],
     });
 }
 
